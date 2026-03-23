@@ -17,8 +17,10 @@ export function NotificationDialog({
   sending,
   newType, 
   setNewType, 
-  newUserId, 
-  setNewUserId, 
+  newEmail, 
+  setNewEmail, 
+  newTitle,
+  setNewTitle,
   newEntityType,
   setNewEntityType,
   newEntityId,
@@ -36,14 +38,25 @@ export function NotificationDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5 py-4">
+          <div className="space-y-2">
+            <label htmlFor="title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notification Title</label>
+            <Input
+              id="title"
+              placeholder="e.g. System Update v2.0"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="bg-muted/50 focus-visible:ring-1 focus-visible:bg-transparent transition-all"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="userId" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target User ID</label>
+              <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target User Email</label>
               <Input
-                id="userId"
-                placeholder="e.g. 123456"
-                value={newUserId}
-                onChange={(e) => setNewUserId(e.target.value)}
+                id="email"
+                placeholder="e.g. user@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
                 className="bg-muted/50 focus-visible:ring-1 focus-visible:bg-transparent transition-all"
               />
             </div>

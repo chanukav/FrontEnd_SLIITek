@@ -19,8 +19,9 @@ export function Notifications() {
   const [sending, setSending] = useState(false)
   
   // Form state
-  const [newUserId, setNewUserId] = useState("")
+  const [newEmail, setNewEmail] = useState("")
   const [newType, setNewType] = useState("announcement")
+  const [newTitle, setNewTitle] = useState("")
   const [newEntityType, setNewEntityType] = useState("system")
   const [newEntityId, setNewEntityId] = useState("")
   const [newMessage, setNewMessage] = useState("")
@@ -42,18 +43,20 @@ export function Notifications() {
   }, [])
 
   const handleSend = async () => {
-    if (newUserId && newType && newMessage && newEntityType) {
+    if (newEmail && newType && newTitle && newMessage && newEntityType) {
       try {
         setSending(true)
         await createNotification({
-          userId: newUserId,
+          email: newEmail,
           type: newType,
+          title: newTitle,
           message: newMessage,
           entityType: newEntityType,
           entityId: newEntityId || undefined // Backend will generate fallback if missing
         })
         setOpenDrawer(false)
-        setNewUserId("")
+        setNewEmail("")
+        setNewTitle("")
         setNewMessage("")
         setNewType("announcement")
         setNewEntityType("system")
@@ -66,7 +69,7 @@ export function Notifications() {
         setSending(false)
       }
     } else {
-      alert("Please fill in User ID, Type, Entity Type, and Message.")
+      alert("Please fill in Target Email, Type, Title, Entity Type, and Message.")
     }
   }
 
@@ -155,8 +158,10 @@ export function Notifications() {
         sending={sending}
         newType={newType}
         setNewType={setNewType}
-        newUserId={newUserId}
-        setNewUserId={setNewUserId}
+        newEmail={newEmail}
+        setNewEmail={setNewEmail}
+        newTitle={newTitle}
+        setNewTitle={setNewTitle}
         newEntityType={newEntityType}
         setNewEntityType={setNewEntityType}
         newEntityId={newEntityId}
