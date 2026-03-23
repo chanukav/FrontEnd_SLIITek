@@ -1,60 +1,116 @@
-import { CheckCircle2, Info, MessageCircle, Star, Target, Trash2 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card"
+import { CheckCircle2, Info, MessageCircle, Star, Target, Trash2, ShieldAlert, RotateCcw } from "lucide-react"
+import { Card, CardContent } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
 import { Button } from "../../../components/ui/button"
 
-export function NotificationList({ notifications, onMarkAsRead, onDelete }) {
+export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, onDelete }) {
   const getIcon = (type) => {
-    switch (type) {
-      case "NEW_ANSWER": return <MessageCircle className="h-5 w-5 text-blue-500" />
-      case "COMMENT": return <MessageCircle className="h-5 w-5 text-purple-500" />
-      case "BEST_ANSWER": return <Star className="h-5 w-5 text-yellow-500" />
-      case "ANNOUNCEMENT": return <Target className="h-5 w-5 text-red-500" />
+    switch (type?.toLowerCase()) {
+      case "answer": return <MessageCircle className="h-5 w-5 text-blue-500" />
+      case "comment": return <MessageCircle className="h-5 w-5 text-purple-500" />
+      case "best_answer": return <Star className="h-5 w-5 text-yellow-500" />
+      case "report_update": return <ShieldAlert className="h-5 w-5 text-orange-500" />
+      case "announcement": return <Target className="h-5 w-5 text-red-500" />
       default: return <Info className="h-5 w-5 text-gray-500" />
     }
   }
 
   const getBadgeVariant = (type) => {
-    return type === "ANNOUNCEMENT" ? "destructive" : "default"
+    return type?.toLowerCase() === "announcement" ? "destructive" : "secondary"
+  }
+
+  const formatType = (type) => {
+    if (!type) return "Notification"
+    return type.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
   }
 
   return (
-    <div className="grid gap-4 mt-6">
+    <div className="flex flex-col gap-3 mt-6">
       {notifications.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground">
-          No notifications found.
+        <div className="text-center py-16 px-4 border border-dashed rounded-xl bg-white shadow-sm text-muted-foreground animate-in fade-in duration-500">
+          <Info className="h-10 w-10 mx-auto mb-3 opacity-20" />
+          <p className="text-lg font-medium">No notifications yet</p>
+          <p className="text-sm">When you have notifications, they'll show up here.</p>
         </div>
       ) : (
-        notifications.map((notif) => (
-          <Card key={notif._id} className={`group relative transition-all duration-200 ${notif.isRead ? "opacity-75 bg-slate-50 dark:bg-slate-900/50" : "bg-white dark:bg-[#1a1c23]"}`}>
-            <CardHeader className="pb-3 flex-row justify-between items-start">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  {getIcon(notif.type)}
-                  Notification
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  Sent on {new Date(notif.createdAt).toLocaleString()}
-                </CardDescription>
+        notifications.map((notif, idx) => (
+          <Card 
+            key={notif._id} 
+            className={`group flex flex-col sm:flex-row shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 border py-3 px-4 bg-white relative overflow-hidden ${
+              notif.isRead 
+                ? "opacity-75 border-border/50 text-muted-foreground" 
+                : "border-border border-l-4 border-l-blue-500 text-slate-800"
+            }`}
+            style={{ animationDelay: `${idx * 50}ms`, animationFillMode: "both" }}
+          >
+            <div className="flex items-start gap-4 flex-1">
+              <div className={`mt-1 flex-shrink-0 p-2 rounded-full ${notif.isRead ? "bg-slate-100" : "bg-blue-50"}`}>
+                {getIcon(notif.type)}
               </div>
-              <div className="flex gap-2 items-center">
-                <Badge variant={getBadgeVariant(notif.type)}>
-                  {notif.type.replace("_", " ")}
-                </Badge>
-                <Button variant="ghost" size="icon" onClick={() => onDelete(notif._id)} title="Delete">
-                  <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
+              
+              <div className="flex-1 space-y-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground">
+                      {formatType(notif.type)}
+                    </span>
+                    {!notif.isRead && (
+                      <span className="flex h-2 w-2 rounded-full bg-blue-500"></span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(notif.createdAt).toLocaleString(undefined, { 
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                      })}
+                    </span>
+                    <Badge variant={getBadgeVariant(notif.type)} className="text-[10px] hidden sm:inline-flex px-2 py-0 h-5">
+                      {formatType(notif.type)}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <p className={`text-sm leading-relaxed ${notif.isRead ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                  {notif.message}
+                </p>
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs text-muted-foreground/70 font-mono">
+                    ID: {notif.userId}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex sm:flex-col items-center justify-end sm:justify-start gap-2 mt-4 sm:mt-0 sm:ml-4 sm:pl-4 sm:border-l border-border/50">
+              {!notif.isRead ? (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => onMarkAsRead(notif._id)}
+                  className="h-8 w-full justify-start text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
+                >
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark Read
                 </Button>
-                {!notif.isRead && (
-                  <Button variant="outline" size="sm" onClick={() => onMarkAsRead(notif._id)}>
-                    Mark Read
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground">{notif.message}</p>
-              <p className="text-xs text-muted-foreground mt-2 border-t pt-2">User ID: {notif.userId}</p>
-            </CardContent>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => onMarkAsUnread(notif._id)}
+                  className="h-8 w-full justify-start text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Mark Unread
+                </Button> 
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onDelete(notif._id)} 
+                title="Delete Notification"
+                className="h-8 w-full justify-start text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-opacity"
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
+              </Button>
+            </div>
           </Card>
         ))
       )}
