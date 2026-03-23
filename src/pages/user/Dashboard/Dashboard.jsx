@@ -16,16 +16,40 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../../components/ui/button"
 import { Skeleton } from "../../../components/ui/skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar"
+import { getCurrentSampleUserEmail } from "../../../services/sampleUserService"
+import { getUserNotifications } from "../../../services/notificationService"
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true)
+  const [recentNotifications, setRecentNotifications] = useState([])
 
-  // Mock API call
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 1500)
-    return () => clearTimeout(timer)
+    const loadDashboardData = async () => {
+      setLoading(true)
+      try {
+        const currentRes = await getCurrentSampleUserEmail()
+        const currentEmail = currentRes?.data?.email
+
+        if (currentEmail) {
+          const notifsRes = await getUserNotifications(currentEmail)
+          const mapped = (notifsRes?.data || []).slice(0, 3).map((notif) => ({
+            id: notif._id,
+            text: notif.title || notif.message,
+            read: !!notif.isRead,
+          }))
+          setRecentNotifications(mapped)
+        } else {
+          setRecentNotifications([])
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard notifications:", err)
+        setRecentNotifications([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardData()
   }, [])
 
   const stats = [
@@ -40,12 +64,6 @@ export function Dashboard() {
     { id: 2, action: "Completed project phase 1", time: "5 hours ago", icon: CheckCircle },
     { id: 3, action: "Received a new message", time: "1 day ago", icon: Mail },
     { id: 4, action: "Logged in from new device", time: "2 days ago", icon: Activity },
-  ]
-
-  const recentNotifications = [
-    { id: 1, text: "System maintenance scheduled", read: false },
-    { id: 2, text: "New comment on your post", read: false },
-    { id: 3, text: "Weekly report generated", read: true },
   ]
 
   const userName = "John Doe"
@@ -170,16 +188,20 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {recentNotifications.map((notif, idx) => (
-                    <div key={idx} className="flex items-start gap-4 rounded-lg border border-slate-100 dark:border-slate-800 p-3 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <div className={`mt-1 h-2 w-2 rounded-full ${notif.read ? 'bg-transparent' : 'bg-[#f9bf3b]'}`} />
-                      <div className="space-y-1">
-                        <p className={`text-sm ${notif.read ? 'text-gray-500' : 'font-medium'}`}>
-                          {notif.text}
-                        </p>
+                  {recentNotifications.length === 0 ? (
+                    <p className="text-sm text-gray-500">No notifications for current user email.</p>
+                  ) : (
+                    recentNotifications.map((notif, idx) => (
+                      <div key={idx} className="flex items-start gap-4 rounded-lg border border-slate-100 dark:border-slate-800 p-3 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <div className={`mt-1 h-2 w-2 rounded-full ${notif.read ? 'bg-transparent' : 'bg-[#f9bf3b]'}`} />
+                        <div className="space-y-1">
+                          <p className={`text-sm ${notif.read ? 'text-gray-500' : 'font-medium'}`}>
+                            {notif.text}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                 ))}
+                    ))
+                  )}
                 </div>
               )}
             </CardContent>

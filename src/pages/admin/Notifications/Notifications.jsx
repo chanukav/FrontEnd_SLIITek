@@ -17,6 +17,8 @@ export function Notifications() {
   const [loading, setLoading] = useState(true)
   const [openDrawer, setOpenDrawer] = useState(false)
   const [sending, setSending] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
   
   // Form state
   const [newEmail, setNewEmail] = useState("")
@@ -25,6 +27,51 @@ export function Notifications() {
   const [newEntityType, setNewEntityType] = useState("system")
   const [newEntityId, setNewEntityId] = useState("")
   const [newMessage, setNewMessage] = useState("")
+
+  const validateNotificationForm = () => {
+    const errors = {}
+
+    const email = newEmail.trim().toLowerCase()
+    const title = newTitle.trim()
+    const message = newMessage.trim()
+    const entityType = newEntityType.trim()
+    const entityId = newEntityId.trim()
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const allowedTypes = new Set(["announcement", "answer", "comment", "best_answer", "report_update"])
+
+    if (!email) errors.email = "Target email is required"
+    else if (!emailRegex.test(email)) errors.email = "Enter a valid email address"
+
+    if (!newType) errors.type = "Notification type is required"
+    else if (!allowedTypes.has(newType)) errors.type = "Invalid notification type"
+
+    if (!title) errors.title = "Title is required"
+    else if (title.length < 3) errors.title = "Title must be at least 3 characters"
+    else if (title.length > 120) errors.title = "Title must be at most 120 characters"
+
+    if (!message) errors.message = "Message body is required"
+    else if (message.length < 5) errors.message = "Message must be at least 5 characters"
+    else if (message.length > 800) errors.message = "Message must be at most 800 characters"
+
+    if (!entityType) errors.entityType = "Entity type is required"
+    else if (entityType.length > 80) errors.entityType = "Entity type must be at most 80 characters"
+
+    // Optional field: allow empty/whitespace as "not provided"
+    if (entityId && entityId.length > 200) errors.entityId = "Entity ID must be at most 200 characters"
+
+    return {
+      valid: Object.keys(errors).length === 0,
+      errors,
+      normalized: {
+        email,
+        title,
+        message,
+        entityType,
+        entityId: entityId ? entityId : undefined,
+      },
+    }
+  }
 
   const fetchNotifications = async () => {
     setLoading(true)
@@ -42,34 +89,51 @@ export function Notifications() {
     fetchNotifications()
   }, [])
 
+  useEffect(() => {
+    if (!openDrawer) {
+      setShowValidation(false)
+      setFormErrors({})
+    }
+  }, [openDrawer])
+
   const handleSend = async () => {
-    if (newEmail && newType && newTitle && newMessage && newEntityType) {
-      try {
-        setSending(true)
-        await createNotification({
-          email: newEmail,
-          type: newType,
-          title: newTitle,
-          message: newMessage,
-          entityType: newEntityType,
-          entityId: newEntityId || undefined // Backend will generate fallback if missing
-        })
-        setOpenDrawer(false)
-        setNewEmail("")
-        setNewTitle("")
-        setNewMessage("")
-        setNewType("announcement")
-        setNewEntityType("system")
-        setNewEntityId("")
-        fetchNotifications()
-      } catch (error) {
-        console.error("Failed to create notification:", error)
-        alert("Failed to send notification: " + error.message)
-      } finally {
-        setSending(false)
-      }
-    } else {
-      alert("Please fill in Target Email, Type, Title, Entity Type, and Message.")
+    setShowValidation(true)
+
+    const { valid, errors, normalized } = validateNotificationForm()
+    if (!valid) {
+      setFormErrors(errors)
+      return
+    }
+
+    try {
+      setSending(true)
+      setFormErrors({})
+
+      await createNotification({
+        email: normalized.email,
+        type: newType,
+        title: normalized.title,
+        message: normalized.message,
+        entityType: normalized.entityType,
+        entityId: normalized.entityId, // Backend will generate fallback if missing
+      })
+
+      setOpenDrawer(false)
+      setShowValidation(false)
+
+      setNewEmail("")
+      setNewTitle("")
+      setNewMessage("")
+      setNewType("announcement")
+      setNewEntityType("system")
+      setNewEntityId("")
+
+      fetchNotifications()
+    } catch (error) {
+      console.error("Failed to create notification:", error)
+      alert("Failed to send notification: " + error.message)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -129,7 +193,11 @@ export function Notifications() {
             {loading ? 'Refreshing' : 'Refresh'}
           </Button>
           <Button 
-            onClick={() => setOpenDrawer(true)} 
+            onClick={() => {
+              setOpenDrawer(true)
+              setShowValidation(false)
+              setFormErrors({})
+            }} 
             className="flex-1 sm:flex-none shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black transition-all hover:scale-105"
           >
             <Send className="mr-2 h-4 w-4" /> Broadcast
@@ -156,6 +224,8 @@ export function Notifications() {
         onClose={setOpenDrawer}
         onSend={handleSend}
         sending={sending}
+        showValidation={showValidation}
+        errors={formErrors}
         newType={newType}
         setNewType={setNewType}
         newEmail={newEmail}
