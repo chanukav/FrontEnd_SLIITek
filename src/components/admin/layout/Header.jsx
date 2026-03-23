@@ -1,4 +1,5 @@
-import { Bell, Menu, Search, User } from "lucide-react"
+import { Menu, Search, User } from "lucide-react"
+import { NotificationDropdown } from "./NotificationDropdown"
 
 export function Header({ setIsOpen }) {
   return (
@@ -33,11 +34,7 @@ export function Header({ setIsOpen }) {
           </div>
         </form>
         <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <button className="-m-2.5 p-2.5 text-white/80 hover:text-white relative transition-colors">
-            <span className="sr-only">View notifications</span>
-            <Bell className="h-6 w-6" aria-hidden="true" />
-            <span className="absolute top-2 right-2.5 block h-2 w-2 rounded-full bg-primary ring-2 ring-header"></span>
-          </button>
+          <NotificationDropdown />
 
           {/* Separator */}
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-white/20" aria-hidden="true" />

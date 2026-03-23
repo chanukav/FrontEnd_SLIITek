@@ -52,7 +52,7 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-foreground">
-                      {formatType(notif.type)}
+                      {notif.title || formatType(notif.type)}
                     </span>
                     {!notif.isRead && (
                       <span className="flex h-2 w-2 rounded-full bg-blue-500"></span>
@@ -75,7 +75,7 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
                 </p>
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs text-muted-foreground/70 font-mono">
-                    ID: {notif.userId}
+                    Email: {notif.email}
                   </p>
                 </div>
               </div>
