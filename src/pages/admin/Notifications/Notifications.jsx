@@ -1,46 +1,82 @@
-import { useState } from "react"
-import { Send as SendIcon, BellPlus, CheckCircle2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { BellPlus, RefreshCw } from "lucide-react"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
-import { Input } from "../../../components/ui/input"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/dialog"
-
-const initialNotifications = [
-  { id: 1, title: "System Maintenance", message: "Servers will be down for 2 hours.", date: "2026-03-21", type: "System" },
-  { id: 2, title: "New Feature Added", message: "Check out the new reporting tools.", date: "2026-03-19", type: "Update" },
-  { id: 3, title: "Welcome back!", message: "We missed you here.", date: "2026-03-15", type: "General" },
-]
+import { NotificationList } from "../../../components/admin/Notifications/NotificationList"
+import { NotificationDialog } from "../../../components/admin/Notifications/NotificationDialog"
+import { 
+  getNotifications, 
+  createNotification, 
+  markAsRead, 
+  deleteNotification 
+} from "../../../services/notificationService"
 
 export function Notifications() {
-  const [notifications, setNotifications] = useState(initialNotifications)
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(true)
   const [openDrawer, setOpenDrawer] = useState(false)
-  const [newTitle, setNewTitle] = useState("")
+  
+  // Form state
+  const [newUserId, setNewUserId] = useState("")
+  const [newType, setNewType] = useState("ANNOUNCEMENT")
   const [newMessage, setNewMessage] = useState("")
 
-  const handleSend = () => {
-    if (newTitle && newMessage) {
-      setNotifications([
-        {
-          id: Date.now(),
-          title: newTitle,
-          message: newMessage,
-          date: new Date().toISOString().split('T')[0],
-          type: "Info"
-        },
-        ...notifications
-      ])
-      setOpenDrawer(false)
-      setNewTitle("")
-      setNewMessage("")
+  const fetchNotifications = async () => {
+    setLoading(true)
+    try {
+      const res = await getNotifications()
+      setNotifications(res.data || [])
+    } catch (error) {
+      console.error("Failed to load notifications:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const handleSend = async () => {
+    if (newUserId && newType && newMessage) {
+      try {
+        await createNotification({
+          userId: newUserId,
+          type: newType,
+          message: newMessage
+        })
+        setOpenDrawer(false)
+        setNewUserId("")
+        setNewMessage("")
+        setNewType("ANNOUNCEMENT")
+        fetchNotifications()
+      } catch (error) {
+        console.error("Failed to create notification:", error)
+      }
+    } else {
+      alert("Please fill all fields")
+    }
+  }
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id)
+      setNotifications(notifications.map(n => 
+        n._id === id ? { ...n, isRead: true } : n
+      ))
+    } catch (error) {
+      console.error("Failed to mark as read:", error)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (confirm("Are you sure you want to delete this notification?")) {
+      try {
+        await deleteNotification(id)
+        setNotifications(notifications.filter(n => n._id !== id))
+      } catch (error) {
+        console.error("Failed to delete notification:", error)
+      }
     }
   }
 
@@ -51,70 +87,37 @@ export function Notifications() {
           <h2 className="text-3xl font-bold tracking-tight text-header">Notifications Hub</h2>
           <p className="text-muted-foreground mt-2">Manage and send global notifications.</p>
         </div>
-        <Button onClick={() => setOpenDrawer(true)} className="shadow-md">
-          <BellPlus className="mr-2 h-4 w-4" /> Send Notification
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchNotifications} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+          <Button onClick={() => setOpenDrawer(true)} className="shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black">
+            <BellPlus className="mr-2 h-4 w-4" /> Send Notification
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 mt-6">
-        {notifications.map((notif) => (
-          <Card key={notif.id} className="group relative transition-all duration-200">
-            <CardHeader className="pb-3 flex-row justify-between items-start">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  {notif.title}
-                </CardTitle>
-                <CardDescription className="mt-1">Sent on {notif.date}</CardDescription>
-              </div>
-              <Badge variant={notif.type === "System" ? "destructive" : "default"}>
-                {notif.type}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground">{notif.message}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {loading ? (
+        <div className="text-center py-10">Loading notifications...</div>
+      ) : (
+        <NotificationList 
+          notifications={notifications} 
+          onMarkAsRead={handleMarkAsRead} 
+          onDelete={handleDelete} 
+        />
+      )}
 
-      <Dialog open={openDrawer} onOpenChange={setOpenDrawer}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Broadcast Notification</DialogTitle>
-            <DialogDescription>
-              Send a push notification to all active users immediately.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="title" className="text-sm font-medium">Notification Title</label>
-              <Input
-                id="title"
-                placeholder="e.g. System Update"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="message" className="text-sm font-medium">Message Details</label>
-              <textarea
-                id="message"
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Type your message here."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDrawer(false)}>Cancel</Button>
-            <Button onClick={handleSend}>
-              <SendIcon className="mr-2 h-4 w-4" /> Send Broadcast
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NotificationDialog 
+        open={openDrawer}
+        onClose={setOpenDrawer}
+        onSend={handleSend}
+        newType={newType}
+        setNewType={setNewType}
+        newUserId={newUserId}
+        setNewUserId={setNewUserId}
+        newMessage={newMessage}
+        setNewMessage={setNewMessage}
+      />
     </div>
   )
 }
