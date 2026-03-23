@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { BellPlus, RefreshCw } from "lucide-react"
+import { BellPlus, RefreshCw, Send } from "lucide-react"
 
 import { Button } from "../../../components/ui/button"
 import { NotificationList } from "../../../components/admin/Notifications/NotificationList"
@@ -8,6 +8,7 @@ import {
   getNotifications, 
   createNotification, 
   markAsRead, 
+  markAsUnread,
   deleteNotification 
 } from "../../../services/notificationService"
 
@@ -15,10 +16,13 @@ export function Notifications() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [openDrawer, setOpenDrawer] = useState(false)
+  const [sending, setSending] = useState(false)
   
   // Form state
   const [newUserId, setNewUserId] = useState("")
-  const [newType, setNewType] = useState("ANNOUNCEMENT")
+  const [newType, setNewType] = useState("announcement")
+  const [newEntityType, setNewEntityType] = useState("system")
+  const [newEntityId, setNewEntityId] = useState("")
   const [newMessage, setNewMessage] = useState("")
 
   const fetchNotifications = async () => {
@@ -38,23 +42,31 @@ export function Notifications() {
   }, [])
 
   const handleSend = async () => {
-    if (newUserId && newType && newMessage) {
+    if (newUserId && newType && newMessage && newEntityType) {
       try {
+        setSending(true)
         await createNotification({
           userId: newUserId,
           type: newType,
-          message: newMessage
+          message: newMessage,
+          entityType: newEntityType,
+          entityId: newEntityId || undefined // Backend will generate fallback if missing
         })
         setOpenDrawer(false)
         setNewUserId("")
         setNewMessage("")
-        setNewType("ANNOUNCEMENT")
+        setNewType("announcement")
+        setNewEntityType("system")
+        setNewEntityId("")
         fetchNotifications()
       } catch (error) {
         console.error("Failed to create notification:", error)
+        alert("Failed to send notification: " + error.message)
+      } finally {
+        setSending(false)
       }
     } else {
-      alert("Please fill all fields")
+      alert("Please fill in User ID, Type, Entity Type, and Message.")
     }
   }
 
@@ -66,6 +78,17 @@ export function Notifications() {
       ))
     } catch (error) {
       console.error("Failed to mark as read:", error)
+    }
+  }
+
+  const handleMarkAsUnread = async (id) => {
+    try {
+      await markAsUnread(id)
+      setNotifications(notifications.map(n => 
+        n._id === id ? { ...n, isRead: false } : n
+      ))
+    } catch (error) {
+      console.error("Failed to unmark as read:", error)
     }
   }
 
@@ -81,28 +104,46 @@ export function Notifications() {
   }
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border shadow-sm">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-header">Notifications Hub</h2>
-          <p className="text-muted-foreground mt-2">Manage and send global notifications.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
+            <BellPlus className="h-8 w-8 text-[#f9bf3b]" />
+            Notifications Hub
+          </h2>
+          <p className="text-muted-foreground mt-2 max-w-xl text-sm">
+            Manage global alerts, monitor user notifications, and broadcast new messages directly to your community.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchNotifications} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        <div className="flex gap-3 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={fetchNotifications} 
+            disabled={loading}
+            className="flex-1 sm:flex-none border-dashed"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 
+            {loading ? 'Refreshing' : 'Refresh'}
           </Button>
-          <Button onClick={() => setOpenDrawer(true)} className="shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black">
-            <BellPlus className="mr-2 h-4 w-4" /> Send Notification
+          <Button 
+            onClick={() => setOpenDrawer(true)} 
+            className="flex-1 sm:flex-none shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black transition-all hover:scale-105"
+          >
+            <Send className="mr-2 h-4 w-4" /> Broadcast
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-10">Loading notifications...</div>
+        <div className="flex flex-col items-center justify-center py-20 animate-in fade-in">
+          <RefreshCw className="h-10 w-10 text-muted-foreground animate-spin mb-4 opacity-50" />
+          <p className="text-muted-foreground font-medium">Loading notifications...</p>
+        </div>
       ) : (
         <NotificationList 
           notifications={notifications} 
           onMarkAsRead={handleMarkAsRead} 
+          onMarkAsUnread={handleMarkAsUnread}
           onDelete={handleDelete} 
         />
       )}
@@ -111,10 +152,15 @@ export function Notifications() {
         open={openDrawer}
         onClose={setOpenDrawer}
         onSend={handleSend}
+        sending={sending}
         newType={newType}
         setNewType={setNewType}
         newUserId={newUserId}
         setNewUserId={setNewUserId}
+        newEntityType={newEntityType}
+        setNewEntityType={setNewEntityType}
+        newEntityId={newEntityId}
+        setNewEntityId={setNewEntityId}
         newMessage={newMessage}
         setNewMessage={setNewMessage}
       />

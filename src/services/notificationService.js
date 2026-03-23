@@ -24,6 +24,14 @@ export const markAsRead = async (id) => {
     return res.json();
 };
 
+export const markAsUnread = async (id) => {
+    const res = await fetch(`${API_URL}/${id}/unread`, {
+        method: "PUT",
+    });
+    if (!res.ok) throw new Error("Failed to mark as unread");
+    return res.json();
+};
+
 export const deleteNotification = async (id) => {
     const res = await fetch(`${API_URL}/${id}`, {
         method: "DELETE",
