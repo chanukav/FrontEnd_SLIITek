@@ -40,10 +40,11 @@ export function NotificationDropdown() {
   const handleMarkAsRead = async (id) => {
     try {
       await markAsRead(id)
-      setNotifications(notifications.map(n => 
-        n._id === id ? { ...n, isRead: true } : n
-      ))
-      setUnreadCount(prev => Math.max(0, prev - 1))
+      setNotifications((prev) => {
+        const next = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+        setUnreadCount(next.filter((n) => !n.isRead).length)
+        return next
+      })
     } catch (error) {
       console.error("Failed to mark as read")
     }

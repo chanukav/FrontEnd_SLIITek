@@ -1,7 +1,6 @@
-import { Search, Bell, Menu } from "lucide-react"
-import { Input } from "../../ui/input"
-import { Button } from "../../ui/button"
+import { Search, Menu } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
+import { NotificationDropdown } from "./NotificationDropdown"
 
 export function Header({ onMenuClick }) {
   return (
@@ -36,17 +35,7 @@ export function Header({ onMenuClick }) {
           />
         </form>
         <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <button
-            type="button"
-            className="-m-2.5 p-2.5 text-gray-300 hover:text-white relative transition-colors"
-          >
-            <span className="sr-only">View notifications</span>
-            <Bell className="h-6 w-6" aria-hidden="true" />
-            <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f9bf3b] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#f9bf3b]"></span>
-            </span>
-          </button>
+          <NotificationDropdown />
 
           {/* Separator */}
           <div

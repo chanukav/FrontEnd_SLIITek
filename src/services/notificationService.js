@@ -6,6 +6,13 @@ export const getNotifications = async () => {
     return res.json();
 };
 
+export const getUserNotifications = async (email) => {
+    if (!email) throw new Error("Email is required to fetch notifications");
+    const res = await fetch(`${API_URL}/user/${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error("Failed to fetch user notifications");
+    return res.json();
+};
+
 export const createNotification = async (data) => {
     const res = await fetch(API_URL, {
         method: "POST",
