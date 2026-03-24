@@ -50,7 +50,7 @@ const LoginPage = () => {
       login(res.data);
 
       if (res.data.user.role === "admin" || res.data.user.role === "moderator") {
-        navigate("/dashboard/staff");
+        navigate("/admin");
       } else {
         navigate("/dashboard/user");
       }
