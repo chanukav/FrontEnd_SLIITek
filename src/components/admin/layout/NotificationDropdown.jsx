@@ -1,59 +1,49 @@
 import { Bell, Check, CheckCheck, Info } from "lucide-react"
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
+
+import { useAuth } from "../../../context/AuthContext"
+import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
 import { getNotifications, markAsRead, markAllAsRead } from "../../../services/notificationService"
 
 export function NotificationDropdown() {
+  const { auth } = useAuth()
+  const adminEmail = auth?.user?.email ?? null
+
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [markingAll, setMarkingAll] = useState(false)
   const dropdownRef = useRef(null)
-  const intervalRef = useRef(null)
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications])
 
-  const fetchNotifs = async () => {
+  // ── Initial fetch (most-recent 20) ───────────────────────────────────────
+  const fetchNotifs = useCallback(async () => {
     try {
       const res = await getNotifications({ limit: 20 })
       setNotifications(res.data || [])
     } catch (error) {
       console.error("Failed to fetch notifications:", error)
     }
-  }
-
-  // Visibility-aware polling — pauses when the tab is hidden
-  useEffect(() => {
-    fetchNotifs()
-
-    const startPolling = () => {
-      if (intervalRef.current) return
-      intervalRef.current = setInterval(() => {
-        if (!document.hidden) fetchNotifs()
-      }, 30000)
-    }
-
-    const stopPolling = () => {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-
-    const handleVisibility = () => {
-      if (document.hidden) {
-        stopPolling()
-      } else {
-        fetchNotifs() // immediately refresh on tab focus
-        startPolling()
-      }
-    }
-
-    startPolling()
-    document.addEventListener("visibilitychange", handleVisibility)
-    return () => {
-      stopPolling()
-      document.removeEventListener("visibilitychange", handleVisibility)
-    }
   }, [])
 
+  useEffect(() => { fetchNotifs() }, [fetchNotifs])
+
+  // ── SSE — admins receive real-time push for every new notification ───────
+  const handleSSENotification = useCallback((notif) => {
+    setNotifications((prev) => {
+      if (prev.some((n) => n._id === notif._id)) return prev
+      return [notif, ...prev]
+    })
+    toast.info(`New notification for ${notif.email}`, {
+      description: notif.title || notif.type?.replace(/_/g, " "),
+    })
+  }, [])
+
+  useNotificationSSE(adminEmail, handleSSENotification)
+
+  // ── Click outside ────────────────────────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -64,28 +54,26 @@ export function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleMarkAsRead = async (id) => {
     try {
       await markAsRead(id)
-      setNotifications((prev) => {
-        const next = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-        return next
-      })
-    } catch (error) {
-      console.error("Failed to mark as read")
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
+    } catch {
+      toast.error("Failed to mark as read")
     }
   }
 
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0 || markingAll) return
-    // Admin sees all emails — batch each unique unread email
     const unreadEmails = [...new Set(notifications.filter(n => !n.isRead).map(n => n.email))]
     setMarkingAll(true)
     try {
       await Promise.all(unreadEmails.map(email => markAllAsRead(email)))
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-    } catch (error) {
-      console.error("Failed to mark all as read:", error)
+      toast.success("All notifications marked as read")
+    } catch {
+      toast.error("Failed to mark all as read")
     } finally {
       setMarkingAll(false)
     }
@@ -122,7 +110,6 @@ export function NotificationDropdown() {
                 onClick={handleMarkAllAsRead}
                 disabled={markingAll}
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 transition-colors"
-                title="Mark all as read"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 {markingAll ? "Marking…" : "Mark all read"}
@@ -147,9 +134,7 @@ export function NotificationDropdown() {
                       <p className={`text-sm ${!notif.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
                         {notif.title || notif.type?.replace(/_/g, ' ')}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">
-                        {notif.message}
-                      </p>
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">{notif.message}</p>
                       <p className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
                         <span>{new Date(notif.createdAt).toLocaleDateString()}</span>
                         {notif.email && (
@@ -162,10 +147,7 @@ export function NotificationDropdown() {
                     </div>
                     {!notif.isRead && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsRead(notif._id);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
                         className="flex-shrink-0 ml-2 rounded p-1 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
                         title="Mark as read"
                       >
@@ -179,6 +161,7 @@ export function NotificationDropdown() {
           </div>
           
           <div className="border-t border-gray-100 px-4 py-3">
+            {/* ✅ Fixed: was /notifications, now /admin/notifications */}
             <Link 
               to="/admin/notifications"
               onClick={() => setShowNotifications(false)}

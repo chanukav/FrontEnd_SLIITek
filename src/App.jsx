@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { Toaster } from "sonner"
 import { AdminLayout } from "./components/admin/layout/AdminLayout"
 import { Dashboard } from "./pages/admin/Dashboard/Dashboard"
 import { Users } from "./pages/admin/Users/Users"
@@ -37,6 +38,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <Toaster position="bottom-right" richColors closeButton />
         <Routes>
           {/* Auth routes */}
           <Route path="/" element={<SignupPage />} />

@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { BellPlus, RefreshCw, Send, Filter, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { toast } from "sonner"
 
+import { useAuth } from "../../../context/AuthContext"
+import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { NotificationList } from "../../../components/admin/Notifications/NotificationList"
@@ -31,6 +34,9 @@ const READ_FILTERS = [
 const PAGE_SIZE = 15
 
 export function Notifications() {
+  const { auth } = useAuth()
+  const adminEmail = auth?.user?.email ?? null
+
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [openDrawer, setOpenDrawer] = useState(false)
@@ -81,6 +87,20 @@ export function Notifications() {
   useEffect(() => {
     fetchNotifications(page)
   }, [page, filterType, filterRead, filterEmail]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // SSE — prepend new notifications to the list in real-time
+  const handleSSENotification = useCallback((notif) => {
+    setNotifications((prev) => {
+      if (prev.some((n) => n._id === notif._id)) return prev
+      return [notif, ...prev]
+    })
+    setTotal((t) => t + 1)
+    toast.info(`New notification sent to ${notif.email}`, {
+      description: notif.title,
+    })
+  }, [])
+
+  useNotificationSSE(adminEmail, handleSSENotification)
 
   useEffect(() => {
     if (!openDrawer) {
@@ -165,6 +185,7 @@ export function Notifications() {
       fetchNotifications(1)
     } catch (error) {
       console.error("Failed to create notification:", error)
+      toast.error("Failed to send notification: " + error.message)
       setFormErrors({ _server: error.message })
     } finally {
       setSending(false)
@@ -175,8 +196,8 @@ export function Notifications() {
     try {
       await markAsRead(id)
       setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n))
-    } catch (error) {
-      console.error("Failed to mark as read:", error)
+    } catch {
+      toast.error("Failed to mark as read")
     }
   }
 
@@ -184,8 +205,8 @@ export function Notifications() {
     try {
       await markAsUnread(id)
       setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: false } : n))
-    } catch (error) {
-      console.error("Failed to unmark as read:", error)
+    } catch {
+      toast.error("Failed to mark as unread")
     }
   }
 
@@ -195,8 +216,9 @@ export function Notifications() {
       await deleteNotification(id)
       setNotifications(notifications.filter(n => n._id !== id))
       setTotal(t => t - 1)
-    } catch (error) {
-      console.error("Failed to delete notification:", error)
+      toast.success("Notification deleted")
+    } catch {
+      toast.error("Failed to delete notification")
     }
   }
 
