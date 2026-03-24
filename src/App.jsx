@@ -11,6 +11,25 @@ import { Profile as UserProfile } from "./pages/user/Profile/Profile"
 import { Notifications as UserNotifications } from "./pages/user/Notifications/Notifications"
 import { Messages as UserMessages } from "./pages/user/Messages/Messages"
 import { Settings as UserSettings } from "./pages/user/Settings/Settings"
+import "./App.css";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import LoginPage from "./pages/User/login";
+import SignupPage from "./pages/User/SIgnUP";
+import ForgotPassword from "./pages/User/ForgotPassword";
+import UserDashboard from "./pages/User/UserDashboard";
+import StaffDashboard from "./pages/User/StaffDashboard";
+import { useAuth } from "./context/AuthContext";
+
+const DashboardRedirect = () => {
+  const { auth } = useAuth();
+
+  if (auth?.user?.role === "admin" || auth?.user?.role === "moderator") {
+    return <Navigate to="/dashboard/staff" replace />;
+  }
+
+  return <Navigate to="/dashboard/user" replace />;
+};
 
 function App() {
   return (
@@ -33,6 +52,36 @@ function App() {
       </Routes>
     </Router>
   )
+      <AuthProvider>
+        <Routes>
+          {/* Default Route */}
+          <Route path="/" element={<SignupPage />} />
+
+          {/* Auth Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+          <Route
+            path="/dashboard/user"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/staff"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "moderator"]}>
+                <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </Router>
+  );
 }
 
-export default App
+export default App;
