@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff, FiMoon, FiSun } from "react-icons/fi";
+import { api } from "../../lib/api";
 
 const LoginPage = () => {
   const [form, setForm] = useState({
@@ -47,14 +47,13 @@ const LoginPage = () => {
     setError("");
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
+      const res = await api.post(
+        "/auth/login",
         {
           email: form.email,
           password: form.password,
           otp: form.otp,
-        },
-        { withCredentials: true }
+        }
       );
 
       if (form.rememberMe) {

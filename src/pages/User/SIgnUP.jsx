@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User,
@@ -15,6 +14,7 @@ import {
   Sparkles,
   BadgeCheck,
 } from "lucide-react";
+import { api } from "../../lib/api";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -95,8 +95,8 @@ export default function SignupPage() {
       submitData.append("phone", formData.phone);
       submitData.append("sliitIdPhoto", formData.sliitIdPhoto);
 
-      const { data } = await axios.post(
-        "http://localhost:5000/api/auth/register",
+      const { data } = await api.post(
+        "/auth/register",
         submitData,
         {
           headers: {
@@ -144,7 +144,7 @@ export default function SignupPage() {
           <div className="relative hidden min-h-[820px] overflow-hidden lg:flex">
             {/* image */}
             <img
-              src="/images/signup-cover.jpg"
+              src="/assets/Sliit.png"
               alt="Signup Cover"
               className="absolute inset-0 h-full w-full object-cover"
             />

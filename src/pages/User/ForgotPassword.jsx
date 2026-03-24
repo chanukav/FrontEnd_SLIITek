@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import {
   Phone,
   ShieldCheck,
@@ -8,6 +7,7 @@ import {
   EyeOff,
   ArrowLeft,
 } from "lucide-react";
+import { api } from "../../lib/api";
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1); // 1=phone, 2=otp, 3=reset
@@ -25,8 +25,6 @@ const ForgotPassword = () => {
 
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
-
-  const API = "http://localhost:5000/api/auth";
 
   useEffect(() => {
     let timer;
@@ -55,7 +53,7 @@ const ForgotPassword = () => {
     setMessage("");
 
     try {
-      const res = await axios.post(`${API}/forgot-password/send-otp`, {
+      const res = await api.post("/auth/forgot-password/send-otp", {
         phone,
       });
 
@@ -77,7 +75,7 @@ const ForgotPassword = () => {
     setMessage("");
 
     try {
-      const res = await axios.post(`${API}/forgot-password/verify-otp`, {
+      const res = await api.post("/auth/forgot-password/verify-otp", {
         phone,
         otp,
       });
@@ -104,7 +102,7 @@ const ForgotPassword = () => {
     }
 
     try {
-      const res = await axios.post(`${API}/forgot-password/reset-password`, {
+      const res = await api.post("/auth/forgot-password/reset-password", {
         phone,
         otp,
         newPassword,
@@ -132,7 +130,7 @@ const ForgotPassword = () => {
     setMessage("");
 
     try {
-      const res = await axios.post(`${API}/forgot-password/send-otp`, {
+      const res = await api.post("/auth/forgot-password/send-otp", {
         phone,
       });
 
