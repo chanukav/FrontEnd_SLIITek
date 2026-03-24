@@ -1,13 +1,25 @@
 import "./App.css";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import LoginPage from "./pages/User/login";
-import Dashboard from "./pages/User/dashboard";
 import SignupPage from "./pages/User/SIgnUP";
 import ForgotPassword from "./pages/User/ForgotPassword";
+import UserDashboard from "./pages/User/UserDashboard";
+import StaffDashboard from "./pages/User/StaffDashboard";
+import { useAuth } from "./context/AuthContext";
+
+const DashboardRedirect = () => {
+  const { auth } = useAuth();
+
+  if (auth?.user?.role === "admin" || auth?.user?.role === "moderator") {
+    return <Navigate to="/dashboard/staff" replace />;
+  }
+
+  return <Navigate to="/dashboard/user" replace />;
+};
 
 function App() {
   return (
@@ -21,11 +33,20 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
           <Route
-            path="/dashboard"
+            path="/dashboard/user"
             element={
-              <ProtectedRoute>
-                <Dashboard />
+              <ProtectedRoute allowedRoles={["user"]}>
+                <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/staff"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "moderator"]}>
+                <StaffDashboard />
               </ProtectedRoute>
             }
           />

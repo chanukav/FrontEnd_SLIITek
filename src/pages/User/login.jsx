@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import { FiEye, FiEyeOff, FiMoon, FiSun } from "react-icons/fi";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import { api } from "../../lib/api";
 
 const LoginPage = () => {
@@ -13,25 +13,11 @@ const LoginPage = () => {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [otpRequired, setOtpRequired] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(
-    localStorage.getItem("theme") === "dark"
-  );
 
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [darkMode]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -52,7 +38,6 @@ const LoginPage = () => {
         {
           email: form.email,
           password: form.password,
-          otp: form.otp,
         }
       );
 
@@ -64,189 +49,100 @@ const LoginPage = () => {
 
       login(res.data);
 
-      if (res.data.user.role === "admin") {
-        navigate("/dashboard");
-      } else if (res.data.user.role === "manager") {
-        navigate("/dashboard");
+      if (res.data.user.role === "admin" || res.data.user.role === "moderator") {
+        navigate("/dashboard/staff");
       } else {
-        navigate("/dashboard");
+        navigate("/dashboard/user");
       }
     } catch (err) {
-      if (err.response?.data?.otpRequired) {
-        setOtpRequired(true);
-        setError("Enter your OTP to continue");
-      } else {
-        setError(err.response?.data?.message || "Login failed");
-      }
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white flex items-center justify-center px-4 py-6 transition-colors">
-      <button
-        onClick={() => setDarkMode(!darkMode)}
-        className="absolute right-6 top-6 z-50 rounded-full border border-slate-300 bg-white/80 px-3 py-3 shadow-md backdrop-blur dark:border-white/20 dark:bg-slate-900/70"
-      >
-        {darkMode ? <FiSun /> : <FiMoon />}
-      </button>
+    <div className="min-h-screen bg-[#c9cedc] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl border border-[#343e43]/20">
+        <h1 className="text-3xl font-bold text-[#343e43] text-center">Login</h1>
+        <p className="mt-2 text-center text-[#343e43]/80">
+          User: ITxxxx@my.sliit.lk | Admin/Moderator: standard verified email
+        </p>
 
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-[32px] border border-white/10 bg-white shadow-2xl dark:bg-white/5 md:grid-cols-2">
-        {/* LEFT SIDE */}
-        <div className="relative hidden min-h-[700px] md:flex flex-col justify-between overflow-hidden p-10 text-white">
-          {/* MAIN BACKGROUND IMAGE - sliit.png fills whole left panel */}
-          <img
-            src="/images/sliit.png"
-            alt="SLIIT Background"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+        {error && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
-          {/* Optional soft blur layer look */}
-          <div className="absolute inset-0 backdrop-blur-[2px]" />
-
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/65 via-violet-700/55 to-cyan-600/45" />
-
-          {/* Dark overlay for text clarity */}
-          <div className="absolute inset-0 bg-black/20" />
-
-          {/* Top Content */}
-          <div className="relative z-10 max-w-xl">
-            <p className="text-sm uppercase tracking-[0.35em] text-white/85">
-              Smart Access
-            </p>
-
-            <h1 className="mt-6 text-6xl font-extrabold leading-[1.08]">
-              Welcome back to your secure portal
-            </h1>
-
-            <p className="mt-6 max-w-lg text-2xl leading-9 text-white/90">
-              Role-based login with protected access for admins, managers, and
-              users.
-            </p>
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-semibold text-[#343e43] mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              placeholder="it85757874@my.sliit.lk"
+              value={form.email}
+              onChange={handleChange}
+              autoComplete="username"
+              className="w-full rounded-xl border border-[#343e43]/30 px-4 py-3 outline-none focus:ring-2 focus:ring-[#f9bf3b]"
+              required
+            />
           </div>
 
-          {/* Bottom Glass Card */}
-          <div className="relative z-10 w-full max-w-[540px] rounded-[28px] border border-white/15 bg-white/10 px-8 py-6 backdrop-blur-md shadow-lg">
-            <p className="text-center text-lg font-medium text-white/95">
-              Secure authentication • Role-based access • Dark mode
-            </p>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE */}
-        <div className="bg-white p-8 md:p-12 lg:p-16 dark:bg-slate-900">
-          <div className="mx-auto max-w-md">
-            <h2 className="text-center text-5xl font-extrabold tracking-tight text-slate-950 dark:text-white">
-              LOG IN
-            </h2>
-
-            <p className="mt-4 text-center text-lg text-slate-500 dark:text-slate-300">
-              Enter your credentials to continue
-            </p>
-
-            {error && (
-              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-                {error}
-              </div>
-            )}
-
-            <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
-              <div>
-                <label className="mb-3 block text-center text-lg font-semibold">
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="manager.it@sliit.lk"
-                  value={form.email}
-                  onChange={handleChange}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:focus:ring-indigo-500/20"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-3 block text-center text-lg font-semibold">
-                  Password
-                </label>
-
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={handleChange}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 pr-16 text-lg outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:focus:ring-indigo-500/20"
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-xl bg-slate-100 text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
-                  >
-                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-                  </button>
-                </div>
-              </div>
-
-              {otpRequired && (
-                <div>
-                  <label className="mb-3 block text-center text-lg font-semibold">
-                    OTP
-                  </label>
-                  <input
-                    type="text"
-                    name="otp"
-                    placeholder="Enter 6-digit OTP"
-                    value={form.otp}
-                    onChange={handleChange}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-base">
-                <label className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
-                  <input
-                    type="checkbox"
-                    name="rememberMe"
-                    checked={form.rememberMe}
-                    onChange={handleChange}
-                    className="h-4 w-4 rounded"
-                  />
-                  Remember me
-                </label>
-
-                <Link
-                  to="/forgot-password"
-                  className="font-semibold text-indigo-600 transition hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
+          <div>
+            <label className="block text-sm font-semibold text-[#343e43] mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                className="w-full rounded-xl border border-[#343e43]/30 px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-[#f9bf3b]"
+                required
+              />
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-2xl bg-slate-900 px-4 py-4 text-lg font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#343e43]"
               >
-                {loading ? "Signing in..." : "Login"}
+                {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>
-            </form>
-
-            <div className="mt-8 rounded-[24px] bg-slate-50 p-6 text-center text-slate-600 dark:bg-slate-800 dark:text-slate-200">
-              <p className="text-2xl font-semibold text-slate-900 dark:text-white">
-                Demo roles
-              </p>
-              <p className="mt-2 text-xl">Admin / Manager / User</p>
             </div>
           </div>
-        </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center gap-2 text-[#343e43]">
+              <input
+                type="checkbox"
+                name="rememberMe"
+                checked={form.rememberMe}
+                onChange={handleChange}
+              />
+              Remember me
+            </label>
+            <Link to="/forgot-password" className="text-[#343e43] underline">
+              Forgot password?
+            </Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-[#f9bf3b] py-3 font-semibold text-[#343e43] hover:opacity-90 disabled:opacity-60"
+          >
+            {loading ? "Signing in..." : "Login"}
+          </button>
+        </form>
+
+        <p className="mt-5 text-center text-sm text-[#343e43]">
+          New student account? <Link to="/" className="font-semibold underline">Sign up</Link>
+        </p>
       </div>
     </div>
   );
