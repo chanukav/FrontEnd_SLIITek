@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { AdminLayout } from "./components/admin/layout/AdminLayout"
 import { Dashboard } from "./pages/admin/Dashboard/Dashboard"
 import { Users } from "./pages/admin/Users/Users"
@@ -17,7 +17,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/User/login";
 import SignupPage from "./pages/User/SIgnUP";
 import ForgotPassword from "./pages/User/ForgotPassword";
-import UserDashboard from "./pages/User/UserDashboard";
+import LegacyUserDashboard from "./pages/User/UserDashboard";
 import StaffDashboard from "./pages/User/StaffDashboard";
 import { useAuth } from "./context/AuthContext";
 
@@ -34,39 +34,38 @@ const DashboardRedirect = () => {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<AdminLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="users" element={<Users />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-        <Route path="/user" element={<UserLayout />}>
-          <Route index element={<UserDashboard />} />
-          <Route path="profile" element={<UserProfile />} />
-          <Route path="notifications" element={<UserNotifications />} />
-          <Route path="messages" element={<UserMessages />} />
-          <Route path="settings" element={<UserSettings />} />
-        </Route>
-      </Routes>
-    </Router>
-  )
       <AuthProvider>
         <Routes>
-          {/* Default Route */}
+          {/* Auth routes */}
           <Route path="/" element={<SignupPage />} />
-
-          {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
+          {/* Admin routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="users" element={<Users />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+
+          {/* User app routes */}
+          <Route path="/user" element={<UserLayout />}>
+            <Route index element={<UserDashboard />} />
+            <Route path="profile" element={<UserProfile />} />
+            <Route path="notifications" element={<UserNotifications />} />
+            <Route path="messages" element={<UserMessages />} />
+            <Route path="settings" element={<UserSettings />} />
+          </Route>
+
+          {/* Role based dashboard redirects */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
           <Route
             path="/dashboard/user"
             element={
               <ProtectedRoute allowedRoles={["user"]}>
-                <UserDashboard />
+                <LegacyUserDashboard />
               </ProtectedRoute>
             }
           />
@@ -78,6 +77,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>
