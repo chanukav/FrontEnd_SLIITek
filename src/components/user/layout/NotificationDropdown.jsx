@@ -1,23 +1,31 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { Bell, Check, CheckCheck, Info } from "lucide-react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 
 import { useAuth } from "../../../context/AuthContext"
-import { getUserNotifications, markAsRead, markAsUnread, markAllAsRead } from "../../../services/notificationService"
+import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
+import {
+  getUserNotifications,
+  markAsRead,
+  markAsUnread,
+  markAllAsRead,
+} from "../../../services/notificationService"
+import { useEffect } from "react"
 
 export function NotificationDropdown() {
   const { auth } = useAuth()
   const email = auth?.user?.email ?? null
 
   const dropdownRef = useRef(null)
-  const intervalRef = useRef(null)
   const [showNotifications, setShowNotifications] = useState(false)
   const [loading, setLoading] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   const [notifications, setNotifications] = useState([])
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications])
 
-  const fetchNotifications = async () => {
+  // ── Initial fetch ────────────────────────────────────────────────────────
+  const fetchNotifications = useCallback(async () => {
     if (!email) return
     setLoading(true)
     try {
@@ -25,51 +33,31 @@ export function NotificationDropdown() {
       setNotifications(res.data || [])
     } catch (err) {
       console.error("Failed to fetch user notifications:", err)
-      setNotifications([])
     } finally {
       setLoading(false)
     }
-  }
-
-  // Visibility-aware polling — pauses when the tab is hidden
-  useEffect(() => {
-    if (!email) {
-      setNotifications([])
-      return
-    }
-
-    fetchNotifications()
-
-    const startPolling = () => {
-      if (intervalRef.current) return
-      intervalRef.current = setInterval(() => {
-        if (!document.hidden) fetchNotifications()
-      }, 30000)
-    }
-
-    const stopPolling = () => {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-
-    const handleVisibility = () => {
-      if (document.hidden) {
-        stopPolling()
-      } else {
-        fetchNotifications()
-        startPolling()
-      }
-    }
-
-    startPolling()
-    document.addEventListener("visibilitychange", handleVisibility)
-    return () => {
-      stopPolling()
-      document.removeEventListener("visibilitychange", handleVisibility)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email])
 
+  useEffect(() => {
+    if (!email) { setNotifications([]); return }
+    fetchNotifications()
+  }, [email, fetchNotifications])
+
+  // ── SSE — prepend new notifications in real-time ────────────────────────
+  const handleSSENotification = useCallback((notif) => {
+    setNotifications((prev) => {
+      // Avoid duplicates
+      if (prev.some((n) => n._id === notif._id)) return prev
+      return [notif, ...prev]
+    })
+    toast.info(notif.title || "New notification", {
+      description: notif.message,
+    })
+  }, [])
+
+  useNotificationSSE(email, handleSSENotification)
+
+  // ── Click outside ────────────────────────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -80,12 +68,13 @@ export function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleMarkAsRead = async (id) => {
     try {
       await markAsRead(id)
       setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err)
+    } catch {
+      toast.error("Failed to mark as read")
     }
   }
 
@@ -93,8 +82,8 @@ export function NotificationDropdown() {
     try {
       await markAsUnread(id)
       setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: false } : n)))
-    } catch (err) {
-      console.error("Failed to mark notification as unread:", err)
+    } catch {
+      toast.error("Failed to mark as unread")
     }
   }
 
@@ -104,8 +93,9 @@ export function NotificationDropdown() {
     try {
       await markAllAsRead(email)
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-    } catch (err) {
-      console.error("Failed to mark all as read:", err)
+      toast.success("All notifications marked as read")
+    } catch {
+      toast.error("Failed to mark all as read")
     } finally {
       setMarkingAll(false)
     }
@@ -144,7 +134,6 @@ export function NotificationDropdown() {
                 onClick={handleMarkAllAsRead}
                 disabled={markingAll}
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 transition-colors"
-                title="Mark all as read"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 {markingAll ? "Marking…" : "Mark all read"}
@@ -158,9 +147,7 @@ export function NotificationDropdown() {
                 Please log in to view notifications.
               </div>
             ) : loading ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">
-                Loading notifications...
-              </div>
+              <div className="px-4 py-8 text-center text-sm text-gray-500">Loading…</div>
             ) : notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
                 <Info className="h-8 w-8 text-gray-300 mb-2" />
@@ -176,11 +163,7 @@ export function NotificationDropdown() {
                     }`}
                   >
                     <div className="flex-1 min-w-0 pr-2">
-                      <p
-                        className={`text-sm ${
-                          !notif.isRead ? "font-semibold text-gray-900" : "font-medium text-gray-800"
-                        }`}
-                      >
+                      <p className={`text-sm ${!notif.isRead ? "font-semibold text-gray-900" : "font-medium text-gray-800"}`}>
                         {notif.title || notif.type?.replace(/_/g, " ") || "Notification"}
                       </p>
                       <p className="mt-1 text-xs text-gray-500 line-clamp-2">{notif.message}</p>
@@ -188,7 +171,6 @@ export function NotificationDropdown() {
                         {notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() : ""}
                       </p>
                     </div>
-
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       {!notif.isRead ? (
                         <button
