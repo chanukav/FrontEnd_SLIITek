@@ -1,145 +1,271 @@
-import { Users as UsersIcon, UserCheck, AlertTriangle, Send } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { useEffect, useState } from "react"
+import {
+  Users as UsersIcon, UserCheck, AlertTriangle, Send,
+  TrendingUp, TrendingDown, Activity, ArrowRight,
+} from "lucide-react"
+import {
+  Bar, BarChart, ResponsiveContainer, XAxis, YAxis,
+  Tooltip, CartesianGrid, Area, AreaChart,
+} from "recharts"
 
-const data = [
+const barData = [
   { name: "Jan", users: 400 },
   { name: "Feb", users: 300 },
-  { name: "Mar", users: 200 },
+  { name: "Mar", users: 520 },
   { name: "Apr", users: 278 },
-  { name: "May", users: 189 },
-  { name: "Jun", users: 239 },
-  { name: "Jul", users: 349 },
+  { name: "May", users: 430 },
+  { name: "Jun", users: 390 },
+  { name: "Jul", users: 600 },
+]
+
+const areaData = [
+  { name: "Mon", reports: 12 },
+  { name: "Tue", reports: 19 },
+  { name: "Wed", reports: 8 },
+  { name: "Thu", reports: 27 },
+  { name: "Fri", reports: 14 },
+  { name: "Sat", reports: 6 },
+  { name: "Sun", reports: 9 },
 ]
 
 const recentActivity = [
-  { id: 1, action: "New user registered", time: "2 minutes ago" },
-  { id: 2, action: "Report resolved by admin", time: "1 hour ago" },
-  { id: 3, action: "System update applied", time: "5 hours ago" },
-  { id: 4, action: "New notification broadcast sent", time: "12 hours ago" },
+  { id: 1, action: "New user registered",            time: "2 min ago",   type: "user" },
+  { id: 2, action: "Report resolved by admin",       time: "1 hr ago",    type: "report" },
+  { id: 3, action: "System update applied",          time: "5 hrs ago",   type: "system" },
+  { id: 4, action: "Notification broadcast sent",    time: "12 hrs ago",  type: "notif" },
+  { id: 5, action: "User account blocked",           time: "1 day ago",   type: "block" },
 ]
 
+const stat_colors = {
+  user:   { dot: "#3b82f6", bg: "#dbeafe" },
+  report: { dot: "#ef4444", bg: "#fee2e2" },
+  system: { dot: "#8b5cf6", bg: "#ede9fe" },
+  notif:  { dot: "#f9bf3b", bg: "#fef3c7" },
+  block:  { dot: "#f97316", bg: "#ffedd5" },
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm">
+        <p className="font-semibold text-foreground">{label}</p>
+        <p className="text-primary font-bold mt-0.5">{payload[0].value.toLocaleString()}</p>
+      </div>
+    )
+  }
+  return null
+}
+
 export function Dashboard() {
+  const [animate, setAnimate] = useState(false)
+  useEffect(() => { setTimeout(() => setAnimate(true), 60) }, [])
+
+  const stats = [
+    {
+      label: "Total Users",
+      value: "10,482",
+      change: "+20.1%",
+      up: true,
+      icon: UsersIcon,
+      color: "blue",
+      iconBg: "#dbeafe",
+      iconColor: "#2563eb",
+    },
+    {
+      label: "Active Users",
+      value: "8,231",
+      change: "+15%",
+      up: true,
+      icon: UserCheck,
+      color: "green",
+      iconBg: "#d1fae5",
+      iconColor: "#059669",
+    },
+    {
+      label: "Open Reports",
+      value: "342",
+      change: "-5%",
+      up: false,
+      icon: AlertTriangle,
+      color: "red",
+      iconBg: "#fee2e2",
+      iconColor: "#dc2626",
+    },
+    {
+      label: "Notifications Sent",
+      value: "128",
+      change: "+12 this week",
+      up: true,
+      icon: Send,
+      color: "yellow",
+      iconBg: "#fef3c7",
+      iconColor: "#d97706",
+    },
+  ]
+
   return (
-    <div className="space-y-6 animate-in fade-in-50 duration-500">
-      <h2 className="text-3xl font-bold tracking-tight text-header">Dashboard Overview</h2>
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover:-translate-y-1 transition-transform">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Users
-            </CardTitle>
-            <UsersIcon className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">10,482</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              +20.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="hover:-translate-y-1 transition-transform">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Users
-            </CardTitle>
-            <UserCheck className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">8,231</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              +15% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="hover:-translate-y-1 transition-transform">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Reports Count
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">342</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              -5% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="hover:-translate-y-1 transition-transform">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Notifications Sent
-            </CardTitle>
-            <Send className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">128</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              +12 new this week
-            </p>
-          </CardContent>
-        </Card>
+    <div className={`space-y-7 transition-all duration-500 ${animate ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+
+      {/* ── Greeting banner ─────────────────────────────── */}
+      <div
+        className="rounded-2xl px-7 py-5 flex items-center justify-between overflow-hidden relative"
+        style={{
+          background: "linear-gradient(135deg, #1e2535 0%, #2c3a56 100%)",
+          boxShadow: "0 4px 24px rgba(30,37,53,0.25)",
+        }}
+      >
+        <div className="relative z-10">
+          <h2 className="text-2xl font-bold text-white">Dashboard Overview</h2>
+          <p className="text-white/50 text-sm mt-1">Here's what's happening across your platform today.</p>
+        </div>
+        <Activity className="h-14 w-14 text-white/10 absolute right-8" />
+        {/* decorative circles */}
+        <div className="absolute -top-6 -right-6 h-28 w-28 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-4 right-20 h-16 w-16 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle>User Growth</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={data}>
-                <XAxis
-                  dataKey="name"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <Tooltip cursor={{fill: 'transparent'}} />
-                <Bar
-                  dataKey="users"
-                  fill="var(--color-primary)"
-                  radius={[4, 4, 0, 0]}
-                  animationDuration={1500}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center">
-                  <span className="relative flex h-2 w-2 mr-4 rounded-full bg-primary/20">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
-                  </span>
-                  <div className="ml-2 space-y-1">
-                    <p className="text-sm font-medium leading-none">{activity.action}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
+      {/* ── Stat Cards ──────────────────────────────────── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
+        {stats.map((s, i) => (
+          <div
+            key={i}
+            className={`stat-card ${s.color} animate-fade-up`}
+            style={{ animationDelay: `${i * 70}ms` }}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div
+                className="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm"
+                style={{ background: s.iconBg }}
+              >
+                <s.icon className="h-5 w-5" style={{ color: s.iconColor }} />
+              </div>
+              <span
+                className={`pill text-[10px] font-semibold ${s.up ? "pill-green" : "pill-red"}`}
+              >
+                {s.up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                {s.change}
+              </span>
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-3xl font-extrabold text-foreground tracking-tight">{s.value}</p>
+            <p className="text-xs font-medium text-muted-foreground mt-1">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Charts Row ──────────────────────────────────── */}
+      <div className="grid gap-5 lg:grid-cols-7">
+
+        {/* Bar Chart */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-border p-6 shadow-soft">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-bold text-foreground text-base">User Growth</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Monthly registrations</p>
+            </div>
+            <span className="pill pill-blue">
+              <TrendingUp className="h-2.5 w-2.5" /> +40%
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={barData} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="name"
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={v => v}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(249,191,59,0.07)" }} />
+              <Bar
+                dataKey="users"
+                fill="#f9bf3b"
+                radius={[6, 6, 0, 0]}
+                animationDuration={1000}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Area Chart */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-border p-6 shadow-soft">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-bold text-foreground text-base">Reports This Week</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Daily report volume</p>
+            </div>
+            <span className="pill pill-red">
+              <AlertTriangle className="h-2.5 w-2.5" /> Live
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={areaData}>
+              <defs>
+                <linearGradient id="reportGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="reports"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                fill="url(#reportGrad)"
+                animationDuration={1000}
+                dot={{ r: 3, fill: "#ef4444", strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Recent Activity ──────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-border shadow-soft overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="font-bold text-foreground text-base">Recent Activity</h3>
+          <button className="text-xs text-primary font-semibold flex items-center gap-1 hover:opacity-80 transition">
+            View all <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+        <div className="divide-y divide-border">
+          {recentActivity.map((activity, i) => {
+            const c = stat_colors[activity.type]
+            return (
+              <div
+                key={activity.id}
+                className="flex items-center gap-4 px-6 py-3.5 hover:bg-muted/50 transition-colors animate-fade-up"
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                {/* Dot */}
+                <div className="relative flex-shrink-0">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full block"
+                    style={{ background: c.dot }}
+                  />
+                  <span
+                    className="absolute inset-0 rounded-full animate-ping"
+                    style={{ background: c.dot, opacity: 0.4, animationDuration: "2s" }}
+                  />
+                </div>
+                <p className="flex-1 text-sm text-foreground font-medium">{activity.action}</p>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.time}</span>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

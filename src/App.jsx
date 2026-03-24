@@ -27,7 +27,7 @@ const DashboardRedirect = () => {
   const { auth } = useAuth();
 
   if (auth?.user?.role === "admin" || auth?.user?.role === "moderator") {
-    return <Navigate to="/dashboard/staff" replace />;
+    return <Navigate to="/admin" replace />;
   }
 
   return <Navigate to="/dashboard/user" replace />;
@@ -46,7 +46,14 @@ function App() {
           <Route path="/questions/:id" element={<QuestionDetailsPage />} />
 
           {/* Admin routes */}
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "moderator"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="reports" element={<Reports />} />
