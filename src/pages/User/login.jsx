@@ -141,7 +141,7 @@ const LoginPage = () => {
         </form>
 
         <p className="mt-5 text-center text-sm text-[#343e43]">
-          New student account? <Link to="/" className="font-semibold underline">Sign up</Link>
+          New student account? <Link to="/signup" className="font-semibold underline">Sign up</Link>
         </p>
       </div>
     </div>

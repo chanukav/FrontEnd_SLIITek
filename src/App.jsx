@@ -23,6 +23,7 @@ import StaffDashboard from "./pages/User/StaffDashboard";
 import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
+import LandingPage from "./pages/Landing/LandingPage";
 
 const DashboardRedirect = () => {
   const { auth } = useAuth();
@@ -40,8 +41,11 @@ function App() {
       <AuthProvider>
         <Toaster position="bottom-right" richColors closeButton />
         <Routes>
+          {/* Landing page */}
+          <Route path="/" element={<LandingPage />} />
+
           {/* Auth routes */}
-          <Route path="/" element={<SignupPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/questions" element={<QuestionsPage />} />
