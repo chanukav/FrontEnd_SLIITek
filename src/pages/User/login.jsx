@@ -48,12 +48,8 @@ const LoginPage = () => {
       }
 
       login(res.data);
-
-      if (res.data.user.role === "admin" || res.data.user.role === "moderator") {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard/user");
-      }
+      // All roles go to the shared home page
+      navigate("/home");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {
