@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../lib/api";
 
 const Dashboard = () => {
   const { auth, logout } = useAuth();
+  const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:5000/api/auth/login-logs?email=${auth.user?.email}`
-        );
+        const res = await api.get("/auth/login-logs", {
+          params: { email: auth.user?.email },
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        });
         setLogs(res.data);
       } catch (error) {
         console.log(error);
@@ -19,7 +24,18 @@ const Dashboard = () => {
     };
 
     if (auth.user?.email) fetchLogs();
-  }, [auth.user?.email]);
+  }, [auth.user?.email, auth.token]);
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.log(error);
+    } finally {
+      logout();
+      navigate("/login");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 p-6 dark:bg-slate-950">
@@ -33,7 +49,7 @@ const Dashboard = () => {
           </div>
 
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="rounded-xl bg-red-500 px-4 py-2 text-white"
           >
             Logout
