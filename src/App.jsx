@@ -24,15 +24,12 @@ import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
 import LandingPage from "./pages/Landing/LandingPage";
+import HomePage from "./pages/Home/HomePage";
 
 const DashboardRedirect = () => {
   const { auth } = useAuth();
-
-  if (auth?.user?.role === "admin" || auth?.user?.role === "moderator") {
-    return <Navigate to="/admin" replace />;
-  }
-
-  return <Navigate to="/dashboard/user" replace />;
+  // Everyone goes to /home after login
+  return <Navigate to="/home" replace />;
 };
 
 function App() {
@@ -91,6 +88,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "moderator"]}>
                 <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Home — main app shell (all logged-in roles) */}
+          <Route
+            path="/home/*"
+            element={
+              <ProtectedRoute>
+                <HomePage />
               </ProtectedRoute>
             }
           />
