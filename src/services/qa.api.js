@@ -29,8 +29,17 @@ const unwrap = (response) => response.data;
 export const qaApi = {
   getQuestions: async () => unwrap(await api.get("/questions")),
   getQuestionById: async (id) => unwrap(await api.get(`/questions/${id}`)),
+  getQuestionSuggestions: async (title) =>
+    unwrap(
+      await api.get("/questions/suggestions", {
+        params: { title },
+      })
+    ),
   createQuestion: async (payload) =>
     unwrap(await api.post("/questions", payload, withAuth())),
+  editQuestion: async (id, payload) =>
+    unwrap(await api.put(`/questions/${id}`, payload, withAuth())),
+  deleteQuestion: async (id) => unwrap(await api.delete(`/questions/${id}`, withAuth())),
 
   getAnswersByQuestion: async (questionId) =>
     unwrap(await api.get(`/answers/question/${questionId}`)),
