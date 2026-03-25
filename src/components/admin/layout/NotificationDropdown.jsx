@@ -1,32 +1,49 @@
-import { Bell, Check, Info } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
+import { Bell, Check, CheckCheck, Info } from "lucide-react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Link } from "react-router-dom"
-import { getNotifications, markAsRead } from "../../../services/notificationService"
+import { toast } from "sonner"
+
+import { useAuth } from "../../../context/AuthContext"
+import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
+import { getNotifications, markAsRead, markAllAsRead } from "../../../services/notificationService"
 
 export function NotificationDropdown() {
+  const { auth } = useAuth()
+  const adminEmail = auth?.user?.email ?? null
+
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [markingAll, setMarkingAll] = useState(false)
   const dropdownRef = useRef(null)
 
-  useEffect(() => {
-    const fetchNotifs = async () => {
-      try {
-        const res = await getNotifications()
-        const data = res.data || []
-        setNotifications(data)
-        setUnreadCount(data.filter(n => !n.isRead).length)
-      } catch (error) {
-        console.error("Failed to fetch notifications:", error)
-      }
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications])
+
+  // ── Initial fetch (most-recent 20) ───────────────────────────────────────
+  const fetchNotifs = useCallback(async () => {
+    try {
+      const res = await getNotifications({ limit: 20 })
+      setNotifications(res.data || [])
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error)
     }
-    fetchNotifs()
-    
-    // Auto-refresh every 30 seconds
-    const intervalId = setInterval(fetchNotifs, 30000)
-    return () => clearInterval(intervalId)
   }, [])
 
+  useEffect(() => { fetchNotifs() }, [fetchNotifs])
+
+  // ── SSE — admins receive real-time push for every new notification ───────
+  const handleSSENotification = useCallback((notif) => {
+    setNotifications((prev) => {
+      if (prev.some((n) => n._id === notif._id)) return prev
+      return [notif, ...prev]
+    })
+    toast.info(`New notification for ${notif.email}`, {
+      description: notif.title || notif.type?.replace(/_/g, " "),
+    })
+  }, [])
+
+  useNotificationSSE(adminEmail, handleSSENotification)
+
+  // ── Click outside ────────────────────────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -37,16 +54,28 @@ export function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleMarkAsRead = async (id) => {
     try {
       await markAsRead(id)
-      setNotifications((prev) => {
-        const next = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-        setUnreadCount(next.filter((n) => !n.isRead).length)
-        return next
-      })
-    } catch (error) {
-      console.error("Failed to mark as read")
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
+    } catch {
+      toast.error("Failed to mark as read")
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    if (unreadCount === 0 || markingAll) return
+    const unreadEmails = [...new Set(notifications.filter(n => !n.isRead).map(n => n.email))]
+    setMarkingAll(true)
+    try {
+      await Promise.all(unreadEmails.map(email => markAllAsRead(email)))
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+      toast.success("All notifications marked as read")
+    } catch {
+      toast.error("Failed to mark all as read")
+    } finally {
+      setMarkingAll(false)
     }
   }
 
@@ -68,11 +97,23 @@ export function NotificationDropdown() {
       {showNotifications && (
         <div className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-xl bg-white py-2 shadow-2xl ring-1 ring-black/5 focus:outline-none z-[100] animate-in slide-in-from-top-2 fade-in duration-200">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+              {unreadCount > 0 && (
+                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
             {unreadCount > 0 && (
-              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                {unreadCount} new
-              </span>
+              <button
+                onClick={handleMarkAllAsRead}
+                disabled={markingAll}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 transition-colors"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                {markingAll ? "Marking…" : "Mark all read"}
+              </button>
             )}
           </div>
           
@@ -91,11 +132,9 @@ export function NotificationDropdown() {
                   >
                     <div className="flex-1 min-w-0 pr-2">
                       <p className={`text-sm ${!notif.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
-                        {notif.title || notif.type.replace(/_/g, ' ')}
+                        {notif.title || notif.type?.replace(/_/g, ' ')}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">
-                        {notif.message}
-                      </p>
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">{notif.message}</p>
                       <p className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
                         <span>{new Date(notif.createdAt).toLocaleDateString()}</span>
                         {notif.email && (
@@ -108,10 +147,7 @@ export function NotificationDropdown() {
                     </div>
                     {!notif.isRead && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsRead(notif._id);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
                         className="flex-shrink-0 ml-2 rounded p-1 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
                         title="Mark as read"
                       >
@@ -125,8 +161,9 @@ export function NotificationDropdown() {
           </div>
           
           <div className="border-t border-gray-100 px-4 py-3">
+            {/* ✅ Fixed: was /notifications, now /admin/notifications */}
             <Link 
-              to="/notifications" 
+              to="/admin/notifications"
               onClick={() => setShowNotifications(false)}
               className="block w-full text-center text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
             >
