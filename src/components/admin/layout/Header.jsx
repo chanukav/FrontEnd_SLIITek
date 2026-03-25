@@ -1,55 +1,155 @@
-import { Menu, Search, User } from "lucide-react"
+import { useState } from "react"
+import { Menu, Search, User, LogOut, Settings, ChevronDown, Shield } from "lucide-react"
 import { NotificationDropdown } from "./NotificationDropdown"
+import { useAuth } from "../../../context/AuthContext"
+import { useNavigate, Link, useLocation } from "react-router-dom"
+import { api } from "../../../lib/api"
+
+const pageTitles = {
+  "/admin":               { title: "Dashboard",     sub: "Welcome to your admin overview" },
+  "/admin/users":         { title: "Users",          sub: "Manage accounts and permissions" },
+  "/admin/reports":       { title: "Reports",        sub: "Review flagged content" },
+  "/admin/notifications": { title: "Notifications",  sub: "Broadcast and manage alerts" },
+  "/admin/settings":      { title: "Settings",       sub: "Profile and system preferences" },
+}
 
 export function Header({ setIsOpen }) {
+  const { auth, logout } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [searchVal, setSearchVal] = useState("")
+
+  const page = pageTitles[location.pathname] ||
+               Object.entries(pageTitles).find(([k]) => location.pathname.startsWith(k))?.[1] ||
+               { title: "Admin", sub: "" }
+
+  const getInitials = (name) => {
+    if (!name) return "A"
+    return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+  }
+
+  const handleLogout = async () => {
+    try { await api.post("/auth/logout") } catch {}
+    logout()
+    navigate("/login")
+  }
+
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b bg-header px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-      <div className="flex gap-4">
+    <header
+      className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-x-4 px-4 sm:px-6 lg:px-8"
+      style={{
+        background: "linear-gradient(135deg, #1e2535 0%, #2a3347 100%)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 1px 20px rgba(0,0,0,0.2)",
+      }}
+    >
+      {/* Left: hamburger + breadcrumb */}
+      <div className="flex items-center gap-4">
         <button
           onClick={() => setIsOpen(true)}
-          className="-m-2.5 p-2.5 text-white/80 hover:text-white lg:hidden"
+          className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors lg:hidden"
         >
           <span className="sr-only">Open sidebar</span>
-          <Menu className="h-6 w-6" aria-hidden="true" />
+          <Menu className="h-5 w-5" />
         </button>
+
+        {/* Page title (desktop) */}
+        <div className="hidden sm:block">
+          <h1 className="text-base font-bold text-white leading-tight">{page.title}</h1>
+          <p className="text-xs text-white/45 leading-none mt-0.5">{page.sub}</p>
+        </div>
       </div>
 
-      <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        <form className="relative flex flex-1 items-center" action="#" method="GET">
-          <label htmlFor="search-field" className="sr-only">
-            Search
-          </label>
-          <div className="relative w-full max-w-md">
-            <Search
-              className="absolute inset-y-0 left-3 h-full w-5 text-white/50"
-              aria-hidden="true"
-            />
-            <input
-              id="search-field"
-              className="block h-10 w-full rounded-md border-0 bg-white/10 py-1.5 pl-10 pr-3 text-white placeholder:text-white/60 focus:bg-white focus:text-gray-900 focus:placeholder:text-gray-500 focus:ring-0 sm:text-sm sm:leading-6 transition-colors duration-200"
-              placeholder="Search..."
-              type="search"
-              name="search"
-            />
-          </div>
-        </form>
-        <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <NotificationDropdown />
+      {/* Right: search + actions */}
+      <div className="flex flex-1 items-center justify-end gap-x-3 lg:gap-x-4">
 
-          {/* Separator */}
-          <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-white/20" aria-hidden="true" />
+        {/* Search */}
+        <div className="relative hidden sm:block w-48 lg:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
+          <input
+            value={searchVal}
+            onChange={e => setSearchVal(e.target.value)}
+            placeholder="Search..."
+            className="w-full h-9 rounded-xl border-0 bg-white/10 pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:bg-white/15 transition-all duration-200"
+          />
+        </div>
 
-          {/* Profile dropdown */}
-          <div className="flex items-center gap-x-4">
-            <span className="hidden lg:flex lg:items-center">
-              <span className="text-sm font-semibold leading-6 text-white" aria-hidden="true">
-                Admin User
+        {/* Notification bell */}
+        <NotificationDropdown />
+
+        {/* Divider */}
+        <div className="h-6 w-px bg-white/15 hidden lg:block" />
+
+        {/* Profile */}
+        <div className="relative">
+          <button
+            onClick={() => setProfileOpen(o => !o)}
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 hover:bg-white/10 transition-colors group"
+          >
+            {/* Avatar */}
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shadow-md shrink-0">
+              <span className="text-xs font-bold text-primary-foreground">
+                {getInitials(auth.user?.name)}
               </span>
-            </span>
-            <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-primary transition-colors hover:bg-primary hover:text-primary-foreground cursor-pointer">
-              <User className="h-5 w-5" />
             </div>
-          </div>
+
+            {/* Name */}
+            <div className="hidden lg:flex flex-col items-start">
+              <span className="text-sm font-semibold text-white leading-tight">
+                {auth.user?.name || "Admin User"}
+              </span>
+              <span className="text-[11px] text-white/45 capitalize leading-none">
+                {auth.user?.role || "admin"}
+              </span>
+            </div>
+
+            <ChevronDown
+              className={`h-4 w-4 text-white/50 transition-transform duration-200 hidden lg:block ${profileOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {/* Dropdown */}
+          {profileOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+              <div
+                className="absolute right-0 top-12 z-50 w-52 rounded-2xl border border-border bg-card shadow-2xl py-1.5 overflow-hidden"
+                style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}
+              >
+                {/* User chip */}
+                <div className="px-4 py-3 border-b border-border">
+                  <p className="text-sm font-semibold text-foreground truncate">{auth.user?.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{auth.user?.email}</p>
+                  <span className="pill pill-yellow mt-1.5">
+                    <Shield className="h-2.5 w-2.5" />
+                    {auth.user?.role}
+                  </span>
+                </div>
+
+                <div className="py-1">
+                  <Link
+                    to="/admin/settings"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    Settings
+                  </Link>
+
+                  <div className="border-t border-border my-1" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/8 transition-colors font-medium"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { Toaster } from "sonner"
 import { AdminLayout } from "./components/admin/layout/AdminLayout"
 import { Dashboard } from "./pages/admin/Dashboard/Dashboard"
 import { Users } from "./pages/admin/Users/Users"
@@ -22,56 +23,40 @@ import StaffDashboard from "./pages/User/StaffDashboard";
 import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
-import NewUserDashboard from "./pages/User/NewUserDashboard";
-import CommunitiesPage from "./pages/User/CommunitiesPage";
-import { Notifications as NewUserNotifications } from "./pages/User/Notifications/Notifications";
-import { Profile as NewUserProfile } from "./pages/User/Profile/Profile";
-import { Settings as NewUserSettings } from "./pages/User/Settings/Settings";
-
-const PublicLanding = () => {
-  const { auth } = useAuth();
-
-  if (auth?.token && auth?.user) {
-    return <Navigate to="/questions" replace />;
-  }
-
-  return <SignupPage />;
-};
-
-const PublicLogin = () => {
-  const { auth } = useAuth();
-
-  if (auth?.token && auth?.user) {
-    return <Navigate to="/questions" replace />;
-  }
-
-  return <LoginPage />;
-};
+import LandingPage from "./pages/Landing/LandingPage";
+import HomePage from "./pages/Home/HomePage";
 
 const DashboardRedirect = () => {
   const { auth } = useAuth();
-
-  if (auth?.user?.role === "admin" || auth?.user?.role === "moderator") {
-    return <Navigate to="/dashboard/staff" replace />;
-  }
-
-  return <Navigate to="/dashboard/user" replace />;
+  // Everyone goes to /home after login
+  return <Navigate to="/home" replace />;
 };
 
 function App() {
   return (
     <Router>
       <AuthProvider>
+        <Toaster position="bottom-right" richColors closeButton />
         <Routes>
+          {/* Landing page */}
+          <Route path="/" element={<LandingPage />} />
+
           {/* Auth routes */}
-          <Route path="/" element={<PublicLanding />} />
-          <Route path="/login" element={<PublicLogin />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/questions" element={<QuestionsPage />} />
           <Route path="/questions/:id" element={<QuestionDetailsPage />} />
 
           {/* Admin routes */}
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "moderator"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="reports" element={<Reports />} />
@@ -143,6 +128,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "moderator"]}>
                 <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Home — main app shell (all logged-in roles) */}
+          <Route
+            path="/home/*"
+            element={
+              <ProtectedRoute>
+                <HomePage />
               </ProtectedRoute>
             }
           />

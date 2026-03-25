@@ -48,8 +48,8 @@ const LoginPage = () => {
       }
 
       login(res.data);
-
-      navigate(redirectTo, { replace: true });
+      // All roles go to the shared home page
+      navigate("/home");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {
@@ -176,6 +176,18 @@ const LoginPage = () => {
           </p>
         </div>
 
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-[#f9bf3b] py-3 font-semibold text-[#343e43] hover:opacity-90 disabled:opacity-60"
+          >
+            {loading ? "Signing in..." : "Login"}
+          </button>
+        </form>
+
+        <p className="mt-5 text-center text-sm text-[#343e43]">
+          New student account? <Link to="/signup" className="font-semibold underline">Sign up</Link>
+        </p>
       </div>
     </div>
   );
