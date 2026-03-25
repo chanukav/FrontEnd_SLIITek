@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { api } from "../../lib/api";
 
@@ -18,6 +18,9 @@ const LoginPage = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const redirectTo = location.state?.from?.pathname || "/questions";
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -49,11 +52,7 @@ const LoginPage = () => {
 
       login(res.data);
 
-      if (res.data.user.role === "admin" || res.data.user.role === "moderator") {
-        navigate("/dashboard/staff");
-      } else {
-        navigate("/dashboard/user");
-      }
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {

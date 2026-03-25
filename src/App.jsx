@@ -23,6 +23,26 @@ import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
 
+const PublicLanding = () => {
+  const { auth } = useAuth();
+
+  if (auth?.token && auth?.user) {
+    return <Navigate to="/questions" replace />;
+  }
+
+  return <SignupPage />;
+};
+
+const PublicLogin = () => {
+  const { auth } = useAuth();
+
+  if (auth?.token && auth?.user) {
+    return <Navigate to="/questions" replace />;
+  }
+
+  return <LoginPage />;
+};
+
 const DashboardRedirect = () => {
   const { auth } = useAuth();
 
@@ -39,8 +59,8 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Auth routes */}
-          <Route path="/" element={<SignupPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<PublicLanding />} />
+          <Route path="/login" element={<PublicLogin />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/questions" element={<QuestionsPage />} />
           <Route path="/questions/:id" element={<QuestionDetailsPage />} />
