@@ -20,6 +20,8 @@ import ForgotPassword from "./pages/User/ForgotPassword";
 import LegacyUserDashboard from "./pages/User/UserDashboard";
 import StaffDashboard from "./pages/User/StaffDashboard";
 import { useAuth } from "./context/AuthContext";
+import QuestionsPage from "./pages/Questions";
+import QuestionDetailsPage from "./pages/QuestionDetails";
 
 const DashboardRedirect = () => {
   const { auth } = useAuth();
@@ -40,6 +42,8 @@ function App() {
           <Route path="/" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/questions" element={<QuestionsPage />} />
+          <Route path="/questions/:id" element={<QuestionDetailsPage />} />
 
           {/* Admin routes */}
           <Route path="/admin" element={<AdminLayout />}>
