@@ -28,6 +28,9 @@ function QuestionDetailsPage() {
   })();
   const currentUser = auth?.user || null;
 
+  const isQuestionOwner =
+    !!currentUser && !!question && question.authorId?._id === currentUser.id;
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -63,6 +66,12 @@ function QuestionDetailsPage() {
       setNewAnswer("");
       await load();
     } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        localStorage.removeItem("auth");
+        navigate("/login");
+        return;
+      }
       setError(err?.response?.data?.message || err.message || "Failed to post answer");
     } finally {
       setPostingAnswer(false);
@@ -74,6 +83,59 @@ function QuestionDetailsPage() {
     const isOwner = question.authorId?._id === currentUser.id;
     const isModerator = ["moderator", "admin"].includes(currentUser.role);
     return !answer.isBest && (isOwner || isModerator);
+  };
+
+  const onEditQuestion = async () => {
+    if (!auth?.token) {
+      navigate("/login");
+      return;
+    }
+    if (!isQuestionOwner) return;
+
+    const nextTitle = window.prompt("Edit question title", question.title);
+    if (nextTitle === null) return;
+    const nextBody = window.prompt("Edit question body", question.body);
+    if (nextBody === null) return;
+
+    const nextCategory = window.prompt(
+      "Edit question category (Academic, Career & Internships, Campus Life, Technical / Programming Help, Study Resources, Clubs & Events, General / Other)",
+      question.category || "General / Other"
+    );
+    if (nextCategory === null) return;
+
+    if (!nextTitle.trim() || !nextBody.trim() || !nextCategory.trim()) {
+      setError("Title, body, and category are required");
+      return;
+    }
+
+    try {
+      await qaApi.editQuestion(id, {
+        title: nextTitle,
+        body: nextBody,
+        category: nextCategory,
+      });
+      await load();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || "Edit failed");
+    }
+  };
+
+  const onDeleteQuestion = async () => {
+    if (!auth?.token) {
+      navigate("/login");
+      return;
+    }
+    if (!isQuestionOwner) return;
+
+    const ok = window.confirm("Delete this question? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      await qaApi.deleteQuestion(id);
+      navigate("/questions", { replace: true });
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || "Delete failed");
+    }
   };
 
   const canEdit = (answer) => currentUser && answer.authorId?._id === currentUser.id;
@@ -137,7 +199,30 @@ function QuestionDetailsPage() {
       <div className="bg-white rounded-xl shadow p-5">
         <div className="flex justify-between items-start gap-3">
           <h1 className="text-2xl font-bold">{question.title}</h1>
-          <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.status}</span>
+          <div className="flex items-center gap-2">
+            {isQuestionOwner && (
+              <>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded border text-sm"
+                  onClick={onEditQuestion}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded border border-red-300 text-red-600 text-sm"
+                  onClick={onDeleteQuestion}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+            {question.category && (
+              <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.category}</span>
+            )}
+            <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.status}</span>
+          </div>
         </div>
         <p className="mt-2 text-slate-700">{question.body}</p>
         <p className="mt-3 text-xs text-slate-500">Asked by {displayName(question.authorId)}</p>
