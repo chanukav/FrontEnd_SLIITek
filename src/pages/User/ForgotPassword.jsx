@@ -7,6 +7,7 @@ import {
   EyeOff,
   ArrowLeft,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api";
 
 const ForgotPassword = () => {
@@ -144,18 +145,21 @@ const ForgotPassword = () => {
     }
   };
 
+  const btnPrimary =
+    "w-full rounded-2xl bg-[#f9bf3b] py-4 font-bold text-[#343e43] shadow-lg transition hover:brightness-95 disabled:opacity-70";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="rounded-3xl border border-white/40 bg-white/80 p-8 shadow-2xl backdrop-blur-xl">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-[#c9cedc] px-4 py-8">
+      <div className="w-full max-w-2xl">
+        <div className="rounded-3xl border border-white/40 bg-white/90 p-10 shadow-2xl backdrop-blur-xl md:p-12">
           <div className="mb-6">
-            <a
-              href="/login"
-              className="inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-blue-600"
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-[#343e43]"
             >
               <ArrowLeft size={16} />
               Back to Login
-            </a>
+            </Link>
           </div>
 
           <div className="mb-8">
@@ -206,11 +210,7 @@ const ForgotPassword = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-2xl bg-gradient-to-r from-blue-700 to-slate-800 py-4 font-semibold text-white shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70"
-              >
+              <button type="submit" disabled={loading} className={btnPrimary}>
                 {loading ? "Sending OTP..." : "Send OTP"}
               </button>
             </form>
@@ -246,11 +246,7 @@ const ForgotPassword = () => {
                 </span>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-2xl bg-gradient-to-r from-blue-700 to-slate-800 py-4 font-semibold text-white shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70"
-              >
+              <button type="submit" disabled={loading} className={btnPrimary}>
                 {loading ? "Verifying..." : "Verify OTP"}
               </button>
 
@@ -260,7 +256,7 @@ const ForgotPassword = () => {
                 disabled={!canResend || loading}
                 className={`w-full rounded-2xl border py-3 font-medium transition ${
                   canResend
-                    ? "border-blue-300 text-blue-700 hover:bg-blue-50"
+                    ? "border-[#f9bf3b] bg-[#f9bf3b]/10 text-[#343e43] hover:bg-[#f9bf3b]/20"
                     : "cursor-not-allowed border-slate-200 text-slate-400"
                 }`}
               >
@@ -331,11 +327,7 @@ const ForgotPassword = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-2xl bg-gradient-to-r from-blue-700 to-slate-800 py-4 font-semibold text-white shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70"
-              >
+              <button type="submit" disabled={loading} className={btnPrimary}>
                 {loading ? "Updating..." : "Reset Password"}
               </button>
             </form>
