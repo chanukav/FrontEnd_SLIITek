@@ -28,6 +28,26 @@ import { Notifications as NewUserNotifications } from "./pages/User/Notification
 import { Profile as NewUserProfile } from "./pages/User/Profile/Profile";
 import { Settings as NewUserSettings } from "./pages/User/Settings/Settings";
 
+const PublicLanding = () => {
+  const { auth } = useAuth();
+
+  if (auth?.token && auth?.user) {
+    return <Navigate to="/questions" replace />;
+  }
+
+  return <SignupPage />;
+};
+
+const PublicLogin = () => {
+  const { auth } = useAuth();
+
+  if (auth?.token && auth?.user) {
+    return <Navigate to="/questions" replace />;
+  }
+
+  return <LoginPage />;
+};
+
 const DashboardRedirect = () => {
   const { auth } = useAuth();
 
@@ -44,8 +64,8 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Auth routes */}
-          <Route path="/" element={<SignupPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<PublicLanding />} />
+          <Route path="/login" element={<PublicLogin />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/questions" element={<QuestionsPage />} />
           <Route path="/questions/:id" element={<QuestionDetailsPage />} />
