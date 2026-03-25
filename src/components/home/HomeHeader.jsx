@@ -331,8 +331,8 @@ export default function HomeHeader({ onSearch }) {
               }}>{user?.role}</div>
             </div>
             {[
-              { label: "My Profile", path: "/home/profile", icon: "👤" },
-              { label: "Settings", path: isAdmin ? "/admin" : "/home/settings", icon: "⚙️" },
+              { label: "My Profile", path: "/user/profile", icon: "👤" },
+              { label: "Settings", path: isAdmin ? "/admin" : "/dashboard/user", icon: "⚙️" },
             ].map((item) => (
               <button key={item.label} onClick={() => { navigate(item.path); setDropOpen(false); }}
                 style={{
