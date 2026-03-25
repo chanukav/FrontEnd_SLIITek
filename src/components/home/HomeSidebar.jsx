@@ -1,13 +1,15 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = [
   { label: "Home",          path: "/home",               icon: "🏠" },
   { label: "Questions",     path: "/home/questions",      icon: "❓" },
   { label: "Ask Question",  path: "/home/ask",            icon: "✏️" },
   { label: "Notifications", path: "/home/notifications",  icon: "🔔" },
-  { label: "Profile",       path: "/home/profile",        icon: "👤" },
-  { label: "Settings",      path: "/home/settings",       icon: "⚙️" },
+  { label: "Profile",       path: "/user/profile",        icon: "👤" },
+  { label: "Settings",      path: "/dashboard/user",      icon: "⚙️" },
 ];
+
 
 const TAGS = [
   { label: "javascript", color: "#f9bf3b" },
@@ -25,6 +27,8 @@ const TAGS = [
 export default function HomeSidebar({ activeTag, onTagClick }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { auth } = useAuth();
+  const isAdmin = auth?.user?.role === "admin" || auth?.user?.role === "moderator";
 
   return (
     <aside style={{
@@ -47,7 +51,13 @@ export default function HomeSidebar({ activeTag, onTagClick }) {
         <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0 0.5rem", marginBottom: "0.5rem" }}>
           Navigation
         </p>
-        {CATEGORIES.map((item) => {
+        {CATEGORIES
+          // Hide 'Settings' for admin/moderator (they have /admin), hide 'Dashboard' for admin too
+          .filter((item) => {
+            if (isAdmin && (item.label === "Settings" || item.label === "Dashboard")) return false;
+            return true;
+          })
+          .map((item) => {
           const active = pathname === item.path || (item.path !== "/home" && pathname.startsWith(item.path));
           return (
             <button

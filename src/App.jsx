@@ -7,7 +7,6 @@ import { Reports } from "./pages/admin/Reports/Reports"
 import { Notifications } from "./pages/admin/Notifications/Notifications"
 import { Settings } from "./pages/admin/Settings/Settings"
 import { UserLayout } from "./components/user/layout/UserLayout"
-import { Dashboard as UserDashboard } from "./pages/user/Dashboard/Dashboard"
 import { Profile as UserProfile } from "./pages/user/Profile/Profile"
 import { Notifications as UserNotifications } from "./pages/user/Notifications/Notifications"
 import { Messages as UserMessages } from "./pages/user/Messages/Messages"
@@ -18,7 +17,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/User/login";
 import SignupPage from "./pages/User/SIgnUP";
 import ForgotPassword from "./pages/User/ForgotPassword";
-import LegacyUserDashboard from "./pages/User/UserDashboard";
 import StaffDashboard from "./pages/User/StaffDashboard";
 import NewUserDashboard from "./pages/User/NewUserDashboard";
 import CommunitiesPage from "./pages/User/CommunitiesPage";
@@ -66,9 +64,9 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
 
-          {/* User app routes */}
+          {/* User app shell (UserLayout) — all sub-pages use NewUserDashboard or related components */}
           <Route path="/user" element={<UserLayout />}>
-            <Route index element={<UserDashboard />} />
+            <Route index element={<NewUserDashboard />} />
             <Route path="profile" element={<UserProfile />} />
             <Route path="notifications" element={<UserNotifications />} />
             <Route path="messages" element={<UserMessages />} />
@@ -77,6 +75,8 @@ function App() {
 
           {/* Role based dashboard redirects */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+
+          {/* Primary user dashboard — NewUserDashboard (single source of truth) */}
           <Route
             path="/dashboard/user"
             element={
