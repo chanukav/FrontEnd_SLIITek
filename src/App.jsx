@@ -22,6 +22,11 @@ import StaffDashboard from "./pages/User/StaffDashboard";
 import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
+import NewUserDashboard from "./pages/User/NewUserDashboard";
+import CommunitiesPage from "./pages/User/CommunitiesPage";
+import { Notifications as NewUserNotifications } from "./pages/User/Notifications/Notifications";
+import { Profile as NewUserProfile } from "./pages/User/Profile/Profile";
+import { Settings as NewUserSettings } from "./pages/User/Settings/Settings";
 
 const DashboardRedirect = () => {
   const { auth } = useAuth();
@@ -69,7 +74,47 @@ function App() {
             path="/dashboard/user"
             element={
               <ProtectedRoute allowedRoles={["user"]}>
-                <LegacyUserDashboard />
+                <NewUserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/questions"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <QuestionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/communities"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <CommunitiesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/notifications"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <NewUserNotifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/profile"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <NewUserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/settings"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <NewUserSettings />
               </ProtectedRoute>
             }
           />
