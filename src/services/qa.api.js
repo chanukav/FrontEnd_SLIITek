@@ -28,6 +28,18 @@ const unwrap = (response) => response.data;
 
 export const qaApi = {
   getQuestions: async () => unwrap(await api.get("/questions")),
+  searchQuestions: async (q, { category, status, page, limit } = {}) =>
+    unwrap(
+      await api.get("/questions/search", {
+        params: {
+          q,
+          ...(category ? { category } : {}),
+          ...(status ? { status } : {}),
+          ...(page ? { page } : {}),
+          ...(limit ? { limit } : {}),
+        },
+      })
+    ),
   getQuestionById: async (id) => unwrap(await api.get(`/questions/${id}`)),
   getQuestionSuggestions: async (title) =>
     unwrap(

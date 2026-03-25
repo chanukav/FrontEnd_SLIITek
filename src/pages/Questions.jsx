@@ -13,6 +13,8 @@ function QuestionsPage() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("General / Other");
@@ -54,6 +56,27 @@ function QuestionsPage() {
   useEffect(() => {
     loadQuestions();
   }, []);
+
+  const submitSearch = async (e) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+
+    if (!q) {
+      await loadQuestions();
+      return;
+    }
+
+    try {
+      setSearching(true);
+      setError("");
+      const data = await qaApi.searchQuestions(q);
+      setQuestions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || "Failed to search questions");
+    } finally {
+      setSearching(false);
+    }
+  };
 
   useEffect(() => {
     const q = title.trim();
@@ -171,7 +194,24 @@ function QuestionsPage() {
       <div className="bg-white rounded-xl shadow p-5">
         <div className="flex justify-between items-center mb-3">
           <h1 className="text-2xl font-bold">Questions</h1>
-          <span className="text-sm text-slate-500">{questions.length} total</span>
+          <div className="flex items-center gap-3">
+            <form onSubmit={submitSearch} className="flex items-center gap-2">
+              <input
+                className="border rounded-md px-3 py-2"
+                placeholder="Search questions"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-md bg-header text-white disabled:opacity-60"
+                disabled={searching}
+              >
+                {searching ? "Searching..." : "Search"}
+              </button>
+            </form>
+            <span className="text-sm text-slate-500">{questions.length} total</span>
+          </div>
         </div>
 
         {loading ? (

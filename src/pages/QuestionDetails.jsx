@@ -14,6 +14,7 @@ function QuestionDetailsPage() {
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [newAnswer, setNewAnswer] = useState("");
+  const [answerError, setAnswerError] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
@@ -58,11 +59,17 @@ function QuestionDetailsPage() {
       navigate("/login");
       return;
     }
-    if (!newAnswer.trim()) return;
+
+    const trimmed = newAnswer.trim();
+    if (!trimmed) {
+      setAnswerError("Please write an answer before submitting.");
+      return;
+    }
 
     try {
       setPostingAnswer(true);
-      await qaApi.postAnswer(id, { body: newAnswer });
+      setAnswerError("");
+      await qaApi.postAnswer(id, { body: trimmed });
       setNewAnswer("");
       await load();
     } catch (err) {
@@ -234,9 +241,13 @@ function QuestionDetailsPage() {
           <textarea
             className="w-full border rounded-md px-3 py-2 min-h-28"
             value={newAnswer}
-            onChange={(e) => setNewAnswer(e.target.value)}
+            onChange={(e) => {
+              setNewAnswer(e.target.value);
+              if (answerError) setAnswerError("");
+            }}
             placeholder="Write your answer"
           />
+          {answerError && <p className="text-red-500 text-sm">{answerError}</p>}
           <button
             type="submit"
             className="px-4 py-2 rounded-md bg-header text-white disabled:opacity-60"
