@@ -20,6 +20,8 @@ import SignupPage from "./pages/User/SIgnUP";
 import ForgotPassword from "./pages/User/ForgotPassword";
 import LegacyUserDashboard from "./pages/User/UserDashboard";
 import StaffDashboard from "./pages/User/StaffDashboard";
+import NewUserDashboard from "./pages/User/NewUserDashboard";
+import CommunitiesPage from "./pages/User/CommunitiesPage";
 import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
@@ -103,7 +105,7 @@ function App() {
             path="/dashboard/user/notifications"
             element={
               <ProtectedRoute allowedRoles={["user"]}>
-                <NewUserNotifications />
+                <Navigate to="/user/notifications" replace />
               </ProtectedRoute>
             }
           />
@@ -111,7 +113,7 @@ function App() {
             path="/dashboard/user/profile"
             element={
               <ProtectedRoute allowedRoles={["user"]}>
-                <NewUserProfile />
+                <Navigate to="/user/profile" replace />
               </ProtectedRoute>
             }
           />
@@ -119,7 +121,7 @@ function App() {
             path="/dashboard/user/settings"
             element={
               <ProtectedRoute allowedRoles={["user"]}>
-                <NewUserSettings />
+                <Navigate to="/user/settings" replace />
               </ProtectedRoute>
             }
           />
