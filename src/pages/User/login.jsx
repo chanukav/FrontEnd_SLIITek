@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { api } from "../../lib/api";
 
@@ -8,7 +8,6 @@ const LoginPage = () => {
   const [form, setForm] = useState({
     email: localStorage.getItem("rememberEmail") || "",
     password: "",
-    otp: "",
     rememberMe: !!localStorage.getItem("rememberEmail"),
   });
 
@@ -18,9 +17,6 @@ const LoginPage = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const redirectTo = location.state?.from?.pathname || "/questions";
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -78,7 +74,7 @@ const LoginPage = () => {
           <div className="relative z-10">
            
             <h2 className="mt-24 text-5xl font-extrabold leading-tight ">
-             <br/>    Hello,<br />welcome the SLIITEK
+             <br/>    Hello,<br />welcome to SLIITEK
             </h2>
             
           </div>
@@ -154,7 +150,7 @@ const LoginPage = () => {
                 Remember me
               </label>
               <Link to="/forgot-password" className="font-semibold text-[#8aa6d7] hover:underline">
-                Forget Password
+                Forgot password?
               </Link>
             </div>
 
@@ -170,7 +166,7 @@ const LoginPage = () => {
 
           <p className="mt-14 text-center text-sm text-[#96a9ce]">
             Not a member yet?{" "}
-            <Link to="/" className="font-semibold text-[#5892e6] hover:underline">
+            <Link to="/signup" className="font-semibold text-[#5892e6] hover:underline">
               Sign up
             </Link>
           </p>
