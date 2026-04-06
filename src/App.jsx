@@ -45,8 +45,22 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/questions" element={<QuestionsPage />} />
-          <Route path="/questions/:id" element={<QuestionDetailsPage />} />
+          <Route
+            path="/questions"
+            element={
+              <ProtectedRoute>
+                <QuestionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/questions/:id"
+            element={
+              <ProtectedRoute>
+                <QuestionDetailsPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin routes */}
           <Route

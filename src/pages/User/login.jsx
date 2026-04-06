@@ -20,7 +20,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = location.state?.from?.pathname || "/questions";
+  const redirectTo = location.state?.from?.pathname || "/home";
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -48,8 +48,7 @@ const LoginPage = () => {
       }
 
       login(res.data);
-      // All roles go to the shared home page
-      navigate("/home");
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {

@@ -207,18 +207,20 @@ export default function HomeHeader({ onSearch }) {
       {/* Logo */}
       <div
         onClick={() => navigate("/home")}
-        style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", flexShrink: 0 }}
+        style={{ display: "flex", alignItems: "center", cursor: "pointer", flexShrink: 0 }}
       >
-        <div style={{
-          width: 32, height: 32, borderRadius: "9px",
-          background: "linear-gradient(135deg, #f9bf3b 0%, #f97316 100%)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontWeight: 900, fontSize: 15, color: "#1a1200",
-          boxShadow: "0 3px 10px rgba(249,191,59,0.4)",
-        }}>S</div>
-        <span style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff", letterSpacing: "-0.02em" }}>
-          SLIIT<span style={{ color: "#f9bf3b" }}>ek</span>
-        </span>
+        <img
+          src="/slitek-logo.webp"
+          alt="SLIITek"
+          style={{
+            height: "32px",
+            width: "auto",
+            display: "block",
+            objectFit: "contain",
+            mixBlendMode: "screen",
+            filter: "brightness(1.1)",
+          }}
+        />
       </div>
 
       {/* Nav links */}
