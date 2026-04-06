@@ -43,11 +43,19 @@ export function Sidebar({ isOpen, setIsOpen }) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-5 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-lg">
-              <span className="text-sm font-black text-primary-foreground">S</span>
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">SLIITek</span>
+          <div className="flex items-center">
+            <img
+              src="/slitek-logo.webp"
+              alt="SLIITek"
+              style={{
+                height: "30px",
+                width: "auto",
+                display: "block",
+                objectFit: "contain",
+                mixBlendMode: "screen",
+                filter: "brightness(1.1)",
+              }}
+            />
           </div>
           <button
             className="lg:hidden p-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"

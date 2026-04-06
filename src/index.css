@@ -3,6 +3,12 @@
 
 @theme {
   /* ── Brand Palette ── */
+  --color-deepNavy:             #00205B;
+  --color-coolSilver:           #FEFEFE;
+  --color-amberGold:            #F9BF3B;
+  --color-azureBlue:            #0091FF;
+  --color-richBlack:            #060707;
+
   --color-background:           #eef0f7;
   --color-foreground:           #0f172a;
 
