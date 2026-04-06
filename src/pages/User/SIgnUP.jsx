@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { toast } from "sonner";
 import { api } from "../../lib/api";
 
 const SLIIT_EMAIL_RE = /^it\d+@my\.sliit\.lk$/i;
@@ -239,7 +240,8 @@ export default function SignupPage() {
         },
       });
 
-      alert(data.message || "Registration successful");
+      const registeredEmail = data.user?.email || formData.email.trim().toLowerCase();
+      toast.success(data.message || "Account created. Next, verify your email.");
 
       setFormData({
         firstName: "",
@@ -256,10 +258,10 @@ export default function SignupPage() {
       setErrors({});
       setTouched({});
 
-      navigate("/login");
+      navigate("/verify-email", { state: { email: registeredEmail } });
     } catch (error) {
       console.error("ERROR:", error.response?.data || error.message);
-      alert(error.response?.data?.message || "Registration failed");
+      toast.error(error.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }
