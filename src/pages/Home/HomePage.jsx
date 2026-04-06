@@ -6,6 +6,8 @@ import { getUserNotifications, markAsRead, markAllAsRead } from "../../services/
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
 import HomeHeader from "../../components/home/HomeHeader";
 import HomeSidebar from "../../components/home/HomeSidebar";
+import { FiAlertTriangle, FiSearch, FiInbox, FiAlertCircle, FiBell, FiUsers, FiHelpCircle, FiCheckCircle } from "react-icons/fi";
+import { BsLightbulb } from "react-icons/bs";
 
 /* ─── Helper ─────────────────────────────────────────────── */
 const displayName = (user) =>
@@ -28,86 +30,87 @@ function QuestionCard({ q }) {
     <Link
       to={`/questions/${q._id}`}
       style={{
-        display: "block", background: "#ffffff",
-        border: "1px solid #e2e8f0", borderRadius: "12px",
-        padding: "1.1rem 1.25rem",
+        display: "block", background: "var(--color-card)",
+        border: "1px solid var(--color-border)", borderRadius: "14px",
+        padding: "1.25rem 1.5rem",
         textDecoration: "none", color: "inherit",
-        transition: "box-shadow 0.2s, border-color 0.2s, transform 0.2s",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+        transition: "all 0.2s cubic-bezier(0.16,1,0.3,1)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+        position: "relative", overflow: "hidden"
       }}
       onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = "0 6px 24px rgba(0,0,0,0.09)";
-        e.currentTarget.style.borderColor = "#f9bf3b55";
-        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.06)";
+        e.currentTarget.style.borderColor = "rgba(249,191,59,0.4)";
+        e.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)";
-        e.currentTarget.style.borderColor = "#e2e8f0";
+        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
+        e.currentTarget.style.borderColor = "var(--color-border)";
         e.currentTarget.style.transform = "none";
       }}
     >
       {/* Title */}
-      <h3 style={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a", marginBottom: "0.45rem", lineHeight: 1.4 }}>
+      <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--color-deepNavy)", marginBottom: "0.5rem", lineHeight: 1.4, letterSpacing: "-0.01em" }}>
         {q.title}
       </h3>
 
       {/* Body preview */}
-      <p style={{ fontSize: "0.875rem", color: "#64748b", lineHeight: 1.6, marginBottom: "0.75rem",
+      <p style={{ fontSize: "0.9rem", color: "var(--color-muted-foreground)", lineHeight: 1.6, marginBottom: "1rem",
         overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
         {q.body}
       </p>
 
       {/* Tags */}
       {q.tags?.length > 0 && (
-        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
           {q.tags.slice(0, 5).map((tag) => (
             <span key={tag} style={{
-              background: "#f1f5f9", color: "#475569", fontSize: "0.72rem",
-              fontWeight: 600, padding: "0.2rem 0.6rem", borderRadius: "99px",
-              border: "1px solid #e2e8f0",
+              background: "var(--color-muted)", color: "var(--color-muted-foreground)", fontSize: "0.75rem",
+              fontWeight: 600, padding: "0.25rem 0.75rem", borderRadius: "99px",
+              border: "1px solid var(--color-border)",
             }}>#{tag}</span>
           ))}
         </div>
       )}
 
       {/* Footer: meta */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", paddingTop: "1rem", borderTop: "1px solid var(--color-muted)" }}>
         {/* Stats */}
-        <div style={{ display: "flex", gap: "1rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           {[
             { label: "answers", value: q.answers?.length ?? q.answerCount ?? 0, good: (q.answers?.length ?? q.answerCount ?? 0) > 0 },
             { label: "votes",   value: q.votes ?? q.upvotes ?? 0, good: false },
           ].map((stat) => (
             <span key={stat.label} style={{
-              fontSize: "0.78rem", fontWeight: 600,
-              color: stat.good ? "#10b981" : "#94a3b8",
-              background: stat.good ? "rgba(16,185,129,0.08)" : "#f8fafc",
-              padding: "0.2rem 0.55rem", borderRadius: "6px",
-              border: `1px solid ${stat.good ? "rgba(16,185,129,0.2)" : "#e2e8f0"}`,
+              fontSize: "0.75rem", fontWeight: 700,
+              color: stat.good ? "var(--color-success)" : "var(--color-muted-foreground)",
+              background: stat.good ? "rgba(16,185,129,0.08)" : "var(--color-muted)",
+              padding: "0.3rem 0.7rem", borderRadius: "8px",
+              border: `1px solid ${stat.good ? "rgba(16,185,129,0.2)" : "var(--color-border)"}`,
             }}>
               {stat.value} {stat.label}
             </span>
           ))}
           <span style={{
-            fontSize: "0.78rem", fontWeight: 600, color: "#94a3b8",
-            background: "#f8fafc", padding: "0.2rem 0.55rem",
-            borderRadius: "6px", border: "1px solid #e2e8f0",
+            fontSize: "0.75rem", fontWeight: 700, color: "var(--color-muted-foreground)",
+            background: "var(--color-muted)", padding: "0.3rem 0.7rem",
+            borderRadius: "8px", border: "1px solid var(--color-border)",
             textTransform: "capitalize",
           }}>{q.status}</span>
         </div>
 
         {/* Author + time */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
           <div style={{
-            width: 24, height: 24, borderRadius: "50%",
-            background: "linear-gradient(135deg,#f9bf3b,#f97316)",
+            width: 26, height: 26, borderRadius: "50%",
+            background: "var(--color-amberGold)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "0.7rem", fontWeight: 800, color: "#1a1200",
+            fontSize: "0.75rem", fontWeight: 800, color: "var(--color-deepNavy)",
           }}>
             {displayName(q.authorId)?.[0]?.toUpperCase() || "?"}
           </div>
-          <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-            {displayName(q.authorId)} · {timeAgo(q.createdAt)}
+          <span style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500 }}>
+            <span style={{ color: "var(--color-deepNavy)", fontWeight: 600 }}>{displayName(q.authorId)}</span> · {timeAgo(q.createdAt)}
           </span>
         </div>
       </div>
@@ -163,28 +166,29 @@ function QuestionFeed({ searchQuery, activeTag }) {
   return (
     <div>
       {/* Feed header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: "1.35rem", color: "#0f172a" }}>
+          <h1 style={{ fontWeight: 800, fontSize: "1.5rem", color: "var(--color-deepNavy)" }}>
             {activeTag ? `#${activeTag}` : searchQuery ? `Results for "${searchQuery}"` : "All Questions"}
           </h1>
-          <p style={{ fontSize: "0.82rem", color: "#94a3b8", marginTop: "0.15rem" }}>
+          <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)", marginTop: "0.25rem" }}>
             {displayed.length} question{displayed.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.4rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", background: "var(--color-muted)", padding: "0.3rem", borderRadius: "10px" }}>
           {["newest", "popular", "unanswered"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               style={{
-                background: filter === f ? "#f9bf3b" : "#f1f5f9",
+                background: filter === f ? "var(--color-card)" : "transparent",
                 border: "none", cursor: "pointer",
-                color: filter === f ? "#1a1200" : "#64748b",
-                fontWeight: filter === f ? 700 : 500,
-                fontSize: "0.8rem", padding: "0.42rem 0.85rem",
+                color: filter === f ? "var(--color-deepNavy)" : "var(--color-muted-foreground)",
+                fontWeight: filter === f ? 700 : 600,
+                fontSize: "0.85rem", padding: "0.45rem 1rem",
                 borderRadius: "7px", textTransform: "capitalize",
-                transition: "all 0.18s",
+                transition: "all 0.2s",
+                boxShadow: filter === f ? "0 2px 8px rgba(0,0,0,0.05)" : "none"
               }}
             >{f}</button>
           ))}
@@ -194,28 +198,38 @@ function QuestionFeed({ searchQuery, activeTag }) {
       {/* Ask CTA banner */}
       {auth?.token && (
         <div style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e2535 100%)",
-          borderRadius: "12px", padding: "1rem 1.25rem",
+          background: `linear-gradient(135deg, var(--color-deepNavy) 0%, #001540 100%)`,
+          borderRadius: "16px", padding: "1.5rem 1.75rem",
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          marginBottom: "1rem", gap: "1rem",
+          marginBottom: "1.5rem", gap: "1.5rem",
+          boxShadow: "0 8px 24px rgba(0,32,91,0.15)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          position: "relative", overflow: "hidden"
         }}>
-          <div>
-            <p style={{ color: "#fff", fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.2rem" }}>
+          {/* Decorative glow */}
+          <div style={{ position: "absolute", top: "-50%", right: "-10%", width: 200, height: 200, background: "var(--color-azureBlue)", filter: "blur(60px)", opacity: 0.15, borderRadius: "50%", pointerEvents: "none" }} />
+          
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <p style={{ color: "var(--color-coolSilver)", fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.35rem", letterSpacing: "-0.01em" }}>
               Have a question? Ask the community!
             </p>
-            <p style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
+            <p style={{ color: "rgba(254,254,254,0.7)", fontSize: "0.85rem" }}>
               Get answers from verified SLIIT students and staff.
             </p>
           </div>
           <button
             onClick={() => navigate("/home/ask")}
             style={{
-              background: "linear-gradient(135deg,#f9bf3b,#f97316)", border: "none",
-              color: "#1a1200", fontWeight: 700, fontSize: "0.85rem",
-              padding: "0.55rem 1.2rem", borderRadius: "8px", cursor: "pointer",
-              whiteSpace: "nowrap", flexShrink: 0, boxShadow: "0 4px 14px rgba(249,191,59,0.35)",
-              transition: "all 0.18s",
+              background: "var(--color-amberGold)", border: "none",
+              color: "var(--color-deepNavy)", fontWeight: 800, fontSize: "0.9rem",
+              padding: "0.7rem 1.5rem", borderRadius: "10px", cursor: "pointer",
+              whiteSpace: "nowrap", flexShrink: 0, 
+              boxShadow: "0 4px 14px rgba(249,191,59,0.3)",
+              transition: "transform 0.2s, box-shadow 0.2s",
+              position: "relative", zIndex: 1
             }}
+            onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(249,191,59,0.4)"; }}
+            onMouseOut={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(249,191,59,0.3)"; }}
           >Ask Question</button>
         </div>
       )}
@@ -237,7 +251,7 @@ function QuestionFeed({ searchQuery, activeTag }) {
         </div>
       ) : error ? (
         <div style={{ textAlign: "center", padding: "3rem", color: "#ef4444" }}>
-          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>⚠️</div>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem", display: "flex", justifyContent: "center" }}><FiAlertTriangle size={48} /></div>
           <p style={{ fontWeight: 600 }}>{error}</p>
           <button onClick={load} style={{ marginTop: "1rem", background: "#f9bf3b", border: "none", borderRadius: "8px", padding: "0.5rem 1.2rem", fontWeight: 600, cursor: "pointer" }}>
             Retry
@@ -245,7 +259,7 @@ function QuestionFeed({ searchQuery, activeTag }) {
         </div>
       ) : displayed.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem 2rem", color: "#94a3b8" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>🔍</div>
+          <div style={{ fontSize: "3rem", marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}><FiSearch size={48} /></div>
           <p style={{ fontWeight: 700, fontSize: "1.05rem", color: "#475569" }}>No questions found</p>
           <p style={{ fontSize: "0.875rem", marginTop: "0.4rem" }}>
             {searchQuery ? "Try a different search term." : "Be the first to ask!"}
@@ -412,7 +426,7 @@ function NotificationsFeed() {
         <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading notifications...</div>
       ) : notifications.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem 2rem", color: "#94a3b8" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>📭</div>
+          <div style={{ fontSize: "3rem", marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}><FiInbox size={48} /></div>
           <p style={{ fontWeight: 700, fontSize: "1.05rem", color: "#475569" }}>You're all caught up!</p>
           <p style={{ fontSize: "0.875rem", marginTop: "0.4rem" }}>No new notifications.</p>
         </div>
@@ -430,7 +444,7 @@ function NotificationsFeed() {
                   background: n.isRead ? "#f1f5f9" : "#eff6ff", color: n.isRead ? "#94a3b8" : "#3b82f6",
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem"
                 }}>
-                  {n.title?.toLowerCase().includes("warning") ? "⚠️" : "🔔"}
+                  {n.title?.toLowerCase().includes("warning") ? <FiAlertCircle size={20} /> : <FiBell size={20} />}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.4rem" }}>
@@ -504,9 +518,9 @@ function RightPanel() {
           Platform Stats
         </p>
         {[
-          { label: "Students",       value: "12,400+", icon: "👥", color: "#3b82f6" },
-          { label: "Questions Asked", value: "38,700+", icon: "❓", color: "#f9bf3b" },
-          { label: "Answers Given",   value: "94,200+", icon: "✅", color: "#10b981" },
+          { label: "Students",       value: "12,400+", icon: <FiUsers size={16} />, color: "#3b82f6" },
+          { label: "Questions Asked", value: "38,700+", icon: <FiHelpCircle size={16} />, color: "#f9bf3b" },
+          { label: "Answers Given",   value: "94,200+", icon: <FiCheckCircle size={16} />, color: "#10b981" },
         ].map((s) => (
           <div key={s.label} style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -529,8 +543,8 @@ function RightPanel() {
         background: "rgba(249,191,59,0.08)", borderRadius: "14px", padding: "1rem",
         border: "1px solid rgba(249,191,59,0.2)",
       }}>
-        <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#d97706", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.6rem" }}>
-          💡 Tips
+        <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#d97706", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.6rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+          <BsLightbulb size={14} /> Tips
         </p>
         {[
           "Use specific titles for faster answers.",

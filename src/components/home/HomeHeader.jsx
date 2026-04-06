@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
 import { getUserNotifications, markAsRead, markAsUnread, markAllAsRead } from "../../services/notificationService";
+import { FiBell, FiSearch, FiUser, FiSettings, FiLogOut } from "react-icons/fi";
 
 /* ─── Notification Dropdown ──────────────────────────────── */
 function HomeNotificationDropdown({ email }) {
@@ -77,19 +78,19 @@ function HomeNotificationDropdown({ email }) {
         onClick={() => setOpen((p) => !p)}
         style={{
           background: "none", border: "none", cursor: "pointer",
-          color: "rgba(255,255,255,0.65)", fontSize: "1.1rem",
+          color: "var(--color-muted-foreground)", fontSize: "1.1rem",
           padding: "0.38rem", borderRadius: "7px", transition: "all 0.18s",
           position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
         }}
-        onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}
-        onMouseOut={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "rgba(255,255,255,0.65)"; }}
+        onMouseOver={(e) => { e.currentTarget.style.background = "var(--color-muted)"; e.currentTarget.style.color = "var(--color-deepNavy)"; }}
+        onMouseOut={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--color-muted-foreground)"; }}
       >
-        🔔
+        <FiBell size={20} />
         {unreadCount > 0 && (
           <span style={{
             position: "absolute", top: 4, right: 4,
-            width: 8, height: 8, borderRadius: "50%", background: "#ef4444",
-            border: "2px solid #1e2535"
+            width: 8, height: 8, borderRadius: "50%", background: "var(--color-destructive)",
+            border: "2px solid var(--color-coolSilver)"
           }} />
         )}
       </button>
@@ -97,17 +98,17 @@ function HomeNotificationDropdown({ email }) {
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 8px)", right: -10,
-          width: 340, background: "#1e2535", border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+          width: 340, background: "var(--color-card)", border: "1px solid var(--color-border)",
+          borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
           overflow: "hidden", animation: "fadeSlideUp 0.18s ease both",
           display: "flex", flexDirection: "column", maxHeight: 420,
         }}>
-          <div style={{ padding: "0.9rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ fontWeight: 700, color: "#fff", fontSize: "0.9rem", margin: 0 }}>
-              Notifications {unreadCount > 0 && <span style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", padding: "0.15rem 0.5rem", borderRadius: "99px", fontSize: "0.7rem", marginLeft: "0.4rem" }}>{unreadCount} new</span>}
+          <div style={{ padding: "0.9rem 1rem", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ fontWeight: 800, color: "var(--color-deepNavy)", fontSize: "0.9rem", margin: 0 }}>
+              Notifications {unreadCount > 0 && <span style={{ background: "rgba(239,68,68,0.1)", color: "var(--color-destructive)", padding: "0.15rem 0.5rem", borderRadius: "99px", fontSize: "0.7rem", marginLeft: "0.4rem" }}>{unreadCount} new</span>}
             </h3>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAll} disabled={markingAll} style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={handleMarkAll} disabled={markingAll} style={{ background: "none", border: "none", color: "var(--color-azureBlue)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {markingAll ? "Marking..." : "Mark all read"}
               </button>
             )}
@@ -115,32 +116,32 @@ function HomeNotificationDropdown({ email }) {
 
           <div style={{ overflowY: "auto", flex: 1 }} className="custom-scrollbar">
             {loading ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>Loading...</div>
+              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>Loading...</div>
             ) : notifications.length === 0 ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>No notifications right now</div>
+              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>No notifications right now</div>
             ) : (
               notifications.map((notif) => (
                 <div key={notif._id} style={{
-                  padding: "0.85rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  background: notif.isRead ? "transparent" : "rgba(59,130,246,0.08)",
+                  padding: "0.85rem 1rem", borderBottom: "1px solid var(--color-border)",
+                  background: notif.isRead ? "transparent" : "rgba(0,145,255,0.05)",
                   display: "flex", gap: "0.75rem", transition: "background 0.15s",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ color: notif.isRead ? "rgba(255,255,255,0.85)" : "#fff", fontSize: "0.85rem", fontWeight: notif.isRead ? 500 : 700, margin: 0 }}>
+                    <p style={{ color: notif.isRead ? "var(--color-muted-foreground)" : "var(--color-deepNavy)", fontSize: "0.85rem", fontWeight: notif.isRead ? 500 : 700, margin: 0 }}>
                       {notif.title || notif.type?.replace(/_/g, " ") || "Notification"}
                     </p>
-                    <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.75rem", margin: "0.2rem 0", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    <p style={{ color: "var(--color-muted-foreground)", fontSize: "0.75rem", margin: "0.2rem 0", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                       {notif.message}
                     </p>
-                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", margin: 0 }}>
+                    <p style={{ color: "var(--color-muted-foreground)", opacity: 0.7, fontSize: "0.7rem", margin: 0 }}>
                       {new Date(notif.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
                     {!notif.isRead ? (
-                      <button onClick={(e) => handleMarkAsRead(notif._id, e)} title="Mark as read" style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", fontSize: "1rem" }}>✓</button>
+                      <button onClick={(e) => handleMarkAsRead(notif._id, e)} title="Mark as read" style={{ background: "none", border: "none", color: "var(--color-azureBlue)", cursor: "pointer", fontSize: "1rem" }}>✓</button>
                     ) : (
-                      <button onClick={(e) => handleMarkAsUnread(notif._id, e)} title="Mark as unread" style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "1rem" }}>•</button>
+                      <button onClick={(e) => handleMarkAsUnread(notif._id, e)} title="Mark as unread" style={{ background: "none", border: "none", color: "var(--color-muted-foreground)", opacity: 0.5, cursor: "pointer", fontSize: "1rem" }}>•</button>
                     )}
                   </div>
                 </div>
@@ -148,8 +149,8 @@ function HomeNotificationDropdown({ email }) {
             )}
           </div>
 
-          <div style={{ padding: "0.6rem", borderTop: "1px solid rgba(255,255,255,0.07)", textAlign: "center" }}>
-            <button onClick={() => { setOpen(false); navigate("/home/notifications"); }} style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+          <div style={{ padding: "0.6rem", borderTop: "1px solid var(--color-border)", textAlign: "center" }}>
+            <button onClick={() => { setOpen(false); navigate("/home/notifications"); }} style={{ background: "none", border: "none", color: "var(--color-azureBlue)", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
               View all
             </button>
           </div>
@@ -198,11 +199,11 @@ export default function HomeHeader({ onSearch }) {
     <header style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
       height: 56,
-      background: "#1e2535",
-      borderBottom: "1px solid rgba(255,255,255,0.07)",
+      background: "var(--color-coolSilver)",
+      borderBottom: "1px solid var(--color-border)",
       display: "flex", alignItems: "center",
       padding: "0 1.25rem", gap: "1rem",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.25)",
+      boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
     }}>
       {/* Logo */}
       <div
@@ -217,8 +218,6 @@ export default function HomeHeader({ onSearch }) {
             width: "auto",
             display: "block",
             objectFit: "contain",
-            mixBlendMode: "screen",
-            filter: "brightness(1.1)",
           }}
         />
       </div>
@@ -234,12 +233,12 @@ export default function HomeHeader({ onSearch }) {
             onClick={() => navigate(item.path)}
             style={{
               background: "none", border: "none", cursor: "pointer",
-              color: "rgba(255,255,255,0.7)", fontWeight: 500, fontSize: "0.85rem",
+              color: "var(--color-muted-foreground)", fontWeight: 600, fontSize: "0.85rem",
               padding: "0.38rem 0.75rem", borderRadius: "6px",
               transition: "all 0.18s",
             }}
-            onMouseOver={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-            onMouseOut={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "none"; }}
+            onMouseOver={(e) => { e.currentTarget.style.color = "var(--color-deepNavy)"; e.currentTarget.style.background = "var(--color-muted)"; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = "var(--color-muted-foreground)"; e.currentTarget.style.background = "none"; }}
           >{item.label}</button>
         ))}
       </nav>
@@ -249,8 +248,9 @@ export default function HomeHeader({ onSearch }) {
         <div style={{ position: "relative" }}>
           <span style={{
             position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)",
-            color: "#94a3b8", fontSize: "0.9rem", pointerEvents: "none",
-          }}>🔍</span>
+            color: "var(--color-muted-foreground)", fontSize: "0.9rem", pointerEvents: "none",
+            display: "flex", alignItems: "center"
+          }}><FiSearch size={16} /></span>
           <input
             id="home-search-input"
             type="text"
@@ -259,12 +259,12 @@ export default function HomeHeader({ onSearch }) {
             onChange={(e) => setQuery(e.target.value)}
             style={{
               width: "100%", padding: "0.45rem 0.9rem 0.45rem 2.2rem",
-              borderRadius: "8px", border: "1.5px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.07)", color: "#ffffff",
+              borderRadius: "8px", border: "1.5px solid var(--color-border)",
+              background: "var(--color-card)", color: "var(--color-deepNavy)",
               fontSize: "0.85rem", outline: "none", transition: "all 0.2s", boxSizing: "border-box",
             }}
-            onFocus={(e) => { e.target.style.borderColor = "#f9bf3b"; e.target.style.background = "rgba(255,255,255,0.1)"; }}
-            onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.12)"; e.target.style.background = "rgba(255,255,255,0.07)"; }}
+            onFocus={(e) => { e.target.style.borderColor = "var(--color-amberGold)"; e.target.style.boxShadow = "0 0 0 3px rgba(249,191,59,0.15)"; }}
+            onBlur={(e) => { e.target.style.borderColor = "var(--color-border)"; e.target.style.boxShadow = "none"; }}
           />
         </div>
       </form>
@@ -276,14 +276,14 @@ export default function HomeHeader({ onSearch }) {
         id="ask-question-btn"
         onClick={() => navigate("/home/ask")}
         style={{
-          background: "linear-gradient(135deg,#f9bf3b,#f97316)", border: "none",
-          color: "#1a1200", fontWeight: 700, fontSize: "0.82rem",
+          background: "var(--color-amberGold)", border: "none",
+          color: "var(--color-deepNavy)", fontWeight: 800, fontSize: "0.85rem",
           padding: "0.45rem 1.05rem", borderRadius: "7px", cursor: "pointer",
-          whiteSpace: "nowrap", boxShadow: "0 3px 10px rgba(249,191,59,0.3)",
+          whiteSpace: "nowrap", boxShadow: "0 3px 10px rgba(249,191,59,0.25)",
           transition: "all 0.18s",
         }}
-        onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(249,191,59,0.45)"; }}
-        onMouseOut={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 3px 10px rgba(249,191,59,0.3)"; }}
+        onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(249,191,59,0.35)"; }}
+        onMouseOut={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 3px 10px rgba(249,191,59,0.25)"; }}
       >
         Ask Question
       </button>
@@ -298,14 +298,14 @@ export default function HomeHeader({ onSearch }) {
           onClick={() => setDropOpen((p) => !p)}
           style={{
             width: 34, height: 34, borderRadius: "50%",
-            background: "linear-gradient(135deg,#f9bf3b,#f97316)",
-            border: "2px solid rgba(255,255,255,0.15)",
+            background: "var(--color-amberGold)",
+            border: "2px solid var(--color-border)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 800, fontSize: "0.82rem", color: "#1a1200",
+            fontWeight: 800, fontSize: "0.82rem", color: "var(--color-deepNavy)",
             cursor: "pointer", transition: "border-color 0.18s",
           }}
-          onMouseOver={(e) => { e.currentTarget.style.borderColor = "rgba(249,191,59,0.6)"; }}
-          onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
+          onMouseOver={(e) => { e.currentTarget.style.borderColor = "var(--color-amberGold)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
         >
           {initials}
         </button>
@@ -313,54 +313,54 @@ export default function HomeHeader({ onSearch }) {
         {dropOpen && (
           <div style={{
             position: "absolute", top: "calc(100% + 8px)", right: 0,
-            width: 210, background: "#1e2535",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.4)", overflow: "hidden",
+            width: 210, background: "var(--color-card)",
+            border: "1px solid var(--color-border)", borderRadius: "12px",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.15)", overflow: "hidden",
             animation: "fadeSlideUp 0.18s ease both",
           }}>
             {/* User info */}
-            <div style={{ padding: "0.9rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.9rem" }}>
+            <div style={{ padding: "0.9rem 1rem", borderBottom: "1px solid var(--color-border)" }}>
+              <div style={{ fontWeight: 800, color: "var(--color-deepNavy)", fontSize: "0.9rem" }}>
                 {user?.firstName} {user?.lastName}
               </div>
-              <div style={{ color: "#94a3b8", fontSize: "0.78rem", marginTop: "0.15rem" }}>{user?.email}</div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: "0.78rem", marginTop: "0.15rem" }}>{user?.email}</div>
               <div style={{
                 display: "inline-block", marginTop: "0.45rem",
                 background: isAdmin ? "rgba(249,191,59,0.15)" : "rgba(16,185,129,0.15)",
-                color: isAdmin ? "#f9bf3b" : "#10b981",
-                fontWeight: 600, fontSize: "0.7rem", padding: "0.15rem 0.55rem",
+                color: isAdmin ? "var(--color-amberGold)" : "var(--color-success)",
+                fontWeight: 700, fontSize: "0.7rem", padding: "0.15rem 0.55rem",
                 borderRadius: "99px", textTransform: "capitalize",
               }}>{user?.role}</div>
             </div>
             {[
-              { label: "My Profile", path: "/user/profile", icon: "👤" },
-              { label: "Settings", path: isAdmin ? "/admin" : "/dashboard/user", icon: "⚙️" },
+              { label: "My Profile", path: "/user/profile", icon: <FiUser size={16} /> },
+              { label: "Settings", path: isAdmin ? "/admin" : "/dashboard/user", icon: <FiSettings size={16} /> },
             ].map((item) => (
               <button key={item.label} onClick={() => { navigate(item.path); setDropOpen(false); }}
                 style={{
                   display: "flex", alignItems: "center", gap: "0.65rem", width: "100%",
                   background: "none", border: "none", cursor: "pointer",
-                  color: "rgba(255,255,255,0.72)", fontSize: "0.875rem",
+                  color: "var(--color-muted-foreground)", fontSize: "0.875rem", fontWeight: 500,
                   padding: "0.65rem 1rem", transition: "all 0.15s", textAlign: "left",
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#fff"; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "rgba(255,255,255,0.72)"; }}
+                onMouseOver={(e) => { e.currentTarget.style.background = "var(--color-muted)"; e.currentTarget.style.color = "var(--color-deepNavy)"; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--color-muted-foreground)"; }}
               >
                 <span>{item.icon}</span>{item.label}
               </button>
             ))}
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ borderTop: "1px solid var(--color-border)" }}>
               <button onClick={handleLogout}
                 style={{
                   display: "flex", alignItems: "center", gap: "0.65rem", width: "100%",
                   background: "none", border: "none", cursor: "pointer",
-                  color: "#ef4444", fontSize: "0.875rem",
+                  color: "var(--color-destructive)", fontSize: "0.875rem", fontWeight: 600,
                   padding: "0.65rem 1rem", transition: "background 0.15s",
                 }}
                 onMouseOver={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
                 onMouseOut={(e) => { e.currentTarget.style.background = "none"; }}
               >
-                <span>🚪</span> Sign Out
+                <span style={{ display: "flex", alignItems: "center" }}><FiLogOut size={16} /></span> Sign Out
               </button>
             </div>
           </div>
