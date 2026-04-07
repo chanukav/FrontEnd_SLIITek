@@ -333,8 +333,9 @@ export default function HomeHeader({ onSearch }) {
               }}>{user?.role}</div>
             </div>
             {[
-              { label: "My Profile", path: "/user/profile", icon: <FiUser size={16} /> },
-              { label: "Settings", path: isAdmin ? "/admin" : "/dashboard/user", icon: <FiSettings size={16} /> },
+              { label: "My Profile", path: "/dashboard/user/profile", icon: <FiUser size={16} /> },
+              ...(isAdmin ? [{ label: "Admin Panel", path: "/admin", icon: <FiSettings size={16} /> }] : []),
+              { label: "Settings", path: "/dashboard/user", icon: <FiSettings size={16} /> },
             ].map((item) => (
               <button key={item.label} onClick={() => { navigate(item.path); setDropOpen(false); }}
                 style={{
