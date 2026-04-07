@@ -1,13 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
-import { FaRegThumbsUp, FaThumbsUp } from "react-icons/fa";
+import { API_ORIGIN } from "../lib/api";
+import { ImageDropZone } from "../components/ImageDropZone";
+import { QuestionImageGallery } from "../components/QuestionImageGallery";
+import { FaRegThumbsDown, FaRegThumbsUp, FaThumbsDown, FaThumbsUp } from "react-icons/fa";
 
 const displayName = (user) =>
   user?.fullName ||
   `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
   user?.name ||
   "Unknown";
+
+/** @param {{ viewUrl?: string; url?: string } | string} imgOrUrl */
+const questionImageSrc = (imgOrUrl) => {
+  const raw =
+    typeof imgOrUrl === "string"
+      ? imgOrUrl.trim()
+      : (imgOrUrl?.viewUrl || imgOrUrl?.url || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/")) return `${API_ORIGIN}${raw}`;
+  return `${API_ORIGIN}/${raw}`;
+};
+
+const patchAnswerInTree = (items, answerId, patch) => {
+  const idStr = String(answerId);
+  return items.map((item) => {
+    if (String(item._id) === idStr) {
+      return { ...item, ...patch };
+    }
+    if (item.replies?.length) {
+      return { ...item, replies: patchAnswerInTree(item.replies, answerId, patch) };
+    }
+    return item;
+  });
+};
 
 function QuestionDetailsPage() {
   const { id } = useParams();
@@ -19,8 +47,12 @@ function QuestionDetailsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [questionMenuOpen, setQuestionMenuOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
+  const questionMenuRef = useRef(null);
 
   const auth = (() => {
     try {
@@ -54,6 +86,25 @@ function QuestionDetailsPage() {
   useEffect(() => {
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (!questionMenuOpen) return;
+    const onDown = (e) => {
+      if (e.key === "Escape") setQuestionMenuOpen(false);
+    };
+    const onClick = (e) => {
+      const el = questionMenuRef.current;
+      if (!el) return;
+      if (el.contains(e.target)) return;
+      setQuestionMenuOpen(false);
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [questionMenuOpen]);
 
   const submitAnswer = async (e) => {
     e.preventDefault();
@@ -94,39 +145,36 @@ function QuestionDetailsPage() {
     return !answer.isBest && (isOwner || isModerator);
   };
 
-  const onEditQuestion = async () => {
-    if (!auth?.token) {
-      navigate("/login");
-      return;
-    }
-    if (!isQuestionOwner) return;
-
-    const nextTitle = window.prompt("Edit question title", question.title);
-    if (nextTitle === null) return;
-    const nextBody = window.prompt("Edit question body", question.body);
-    if (nextBody === null) return;
-
-    const nextCategory = window.prompt(
-      "Edit question category (Academic, Career & Internships, Campus Life, Technical / Programming Help, Study Resources, Clubs & Events, General / Other)",
-      question.category || "General / Other"
-    );
-    if (nextCategory === null) return;
-
-    if (!nextTitle.trim() || !nextBody.trim() || !nextCategory.trim()) {
-      setError("Title, body, and category are required");
-      return;
-    }
-
+  const uploadQuestionImageFiles = async (fileBatch) => {
+    const remaining = Math.max(0, 8 - (question?.images?.length ?? 0));
+    const files = fileBatch.slice(0, remaining);
+    if (!files.length || !auth?.token) return;
     try {
-      await qaApi.editQuestion(id, {
-        title: nextTitle,
-        body: nextBody,
-        category: nextCategory,
-      });
-      await load();
+      setError("");
+      setUploadingImages(true);
+      const res = await qaApi.uploadQuestionImages(id, files);
+      if (res?.question) setQuestion(res.question);
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Edit failed");
+      setError(err?.response?.data?.message || err.message || "Upload failed");
+    } finally {
+      setUploadingImages(false);
     }
+  };
+
+  const onRemoveQuestionImage = async (url) => {
+    if (!auth?.token) return;
+    try {
+      setError("");
+      const res = await qaApi.removeQuestionImage(id, url);
+      if (res?.question) setQuestion(res.question);
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || "Remove failed");
+    }
+  };
+
+  const onEditQuestion = () => {
+    if (!isQuestionOwner) return;
+    navigate(`/questions/${id}/edit`);
   };
 
   const onDeleteQuestion = async () => {
@@ -135,9 +183,6 @@ function QuestionDetailsPage() {
       return;
     }
     if (!isQuestionOwner) return;
-
-    const ok = window.confirm("Delete this question? This cannot be undone.");
-    if (!ok) return;
 
     try {
       await qaApi.deleteQuestion(id);
@@ -185,20 +230,25 @@ function QuestionDetailsPage() {
     }
   };
 
-  const onToggleLike = async (answerId, likedByMe) => {
+  const onVoteAnswer = async (answerId, type) => {
     if (!auth?.token) {
       navigate("/login");
       return;
     }
     try {
-      if (likedByMe) {
-        await qaApi.unvoteAnswer(answerId);
-      } else {
-        await qaApi.voteAnswer(answerId);
-      }
-      await load();
+      setError("");
+      const res = await qaApi.voteAnswer(answerId, { type });
+      setAnswers((prev) =>
+        patchAnswerInTree(prev, answerId, {
+          voteScore: res.voteScore,
+          dislikeCount: res.dislikeCount ?? 0,
+          likedByMe: !!res.likedByMe,
+          dislikedByMe: !!res.dislikedByMe,
+          myVote: res.myVote ?? 0,
+        })
+      );
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Like failed");
+      setError(err?.response?.data?.message || err.message || "Vote failed");
     }
   };
 
@@ -245,28 +295,30 @@ function QuestionDetailsPage() {
         <div className="flex flex-wrap gap-2 mt-3">
           {(() => {
             const liked = !!answer.likedByMe;
+            const disliked = !!answer.dislikedByMe;
+            const likeCount = answer.voteScore ?? 0;
+            const unlikeCount = answer.dislikeCount ?? 0;
             return (
               <>
                 <button
                   type="button"
-                  className={`px-3 py-1 rounded border text-sm flex items-center gap-2 ${
-                    liked ? "border-blue-400 bg-blue-50 cursor-not-allowed" : "border-blue-400 bg-blue-50"
+                  className={`px-3 py-1 rounded border text-sm flex items-center gap-2 border-blue-400 bg-blue-50 ${
+                    liked ? "ring-2 ring-blue-500" : ""
                   }`}
-                  disabled={liked}
-                  onClick={() => onToggleLike(answer._id, liked)}
+                  onClick={() => onVoteAnswer(answer._id, "like")}
                 >
-                  <FaRegThumbsUp size={16} />
-                  Like ({answer.voteScore || 0})
+                  {liked ? <FaThumbsUp size={16} /> : <FaRegThumbsUp size={16} />}
+                  Like ({likeCount})
                 </button>
                 <button
                   type="button"
-                  // Keep unlike button grey whether it's enabled or disabled.
-                  className="px-3 py-1 rounded border text-sm flex items-center gap-2 border-slate-300 text-slate-400"
-                  disabled={!liked}
-                  onClick={() => onToggleLike(answer._id, liked)}
+                  className={`px-3 py-1 rounded border text-sm flex items-center gap-2 border-blue-400 bg-blue-50 ${
+                    disliked ? "ring-2 ring-blue-500" : ""
+                  }`}
+                  onClick={() => onVoteAnswer(answer._id, "dislike")}
                 >
-                  <FaThumbsUp size={16} />
-                  Unlike ({answer.voteScore || 0})
+                  {disliked ? <FaThumbsDown size={16} /> : <FaRegThumbsDown size={16} />}
+                  Unlike ({unlikeCount})
                 </button>
               </>
             );
@@ -348,31 +400,86 @@ function QuestionDetailsPage() {
         <div className="flex justify-between items-start gap-3">
           <h1 className="text-2xl font-bold">{question.title}</h1>
           <div className="flex items-center gap-2">
-            {isQuestionOwner && (
-              <>
-                <button
-                  type="button"
-                  className="px-3 py-1 rounded border text-sm"
-                  onClick={onEditQuestion}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1 rounded border border-red-300 text-red-600 text-sm"
-                  onClick={onDeleteQuestion}
-                >
-                  Delete
-                </button>
-              </>
-            )}
             {question.category && (
               <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.category}</span>
             )}
             <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.status}</span>
+            {isQuestionOwner && (
+              <div className="relative ml-2" ref={questionMenuRef}>
+                <button
+                  type="button"
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  onClick={() => setQuestionMenuOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={questionMenuOpen}
+                  title="More"
+                >
+                  <span className="text-xl leading-none">⋯</span>
+                </button>
+                {questionMenuOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg overflow-hidden z-20"
+                    role="menu"
+                  >
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                      role="menuitem"
+                      onClick={() => {
+                        setQuestionMenuOpen(false);
+                        onEditQuestion();
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      role="menuitem"
+                      onClick={() => {
+                        setQuestionMenuOpen(false);
+                        setConfirmDeleteOpen(true);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <p className="mt-2 text-slate-700">{question.body}</p>
+
+        <QuestionImageGallery
+          images={question.images || []}
+          origin={API_ORIGIN}
+          maxPreview={4}
+          canRemove={isQuestionOwner}
+          onRemoveUrl={(url) => onRemoveQuestionImage(url)}
+        />
+
+        {isQuestionOwner && (
+          <div className="mt-3 space-y-1">
+            <ImageDropZone
+              maxFiles={Math.max(0, 8 - (question.images?.length ?? 0))}
+              disabled={uploadingImages || (question.images?.length ?? 0) >= 8}
+              onFilesReady={(files) => void uploadQuestionImageFiles(files)}
+              label="Add images (drag & drop or click)"
+              hint={
+                uploadingImages
+                  ? "Uploading…"
+                  : (question.images?.length ?? 0) >= 8
+                    ? "Maximum 8 images on this question."
+                    : "Drop files here or click to browse · JPEG, PNG, GIF, WebP"
+              }
+            />
+            <p className="text-xs text-slate-500">
+              {(question.images?.length ?? 0)}/8 images · max 5MB per file
+            </p>
+          </div>
+        )}
+
         <p className="mt-3 text-xs text-slate-500">Asked by {displayName(question.authorId)}</p>
       </div>
 
@@ -410,6 +517,44 @@ function QuestionDetailsPage() {
       </div>
 
       {error && <p className="text-red-500">{error}</p>}
+
+      {confirmDeleteOpen ? (
+        <div
+          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
+          role="presentation"
+          onClick={() => setConfirmDeleteOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold">Delete question?</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              This cannot be undone. Your question and screenshots will be removed.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border"
+                onClick={() => setConfirmDeleteOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={async () => {
+                  setConfirmDeleteOpen(false);
+                  await onDeleteQuestion();
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
     </div>
   );
 }

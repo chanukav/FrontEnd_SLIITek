@@ -24,6 +24,7 @@ import CommunitiesPage from "./pages/User/CommunitiesPage";
 import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
+import EditQuestionPage from "./pages/EditQuestion";
 import LandingPage from "./pages/Landing/LandingPage";
 import HomePage from "./pages/Home/HomePage";
 
@@ -60,6 +61,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <QuestionDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/questions/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EditQuestionPage />
               </ProtectedRoute>
             }
           />
