@@ -11,12 +11,15 @@ import {
   markAsUnread,
   markAllAsRead,
 } from "../../../services/notificationService"
+import {
+  normalizeNotificationForViewer,
+  mapNotificationsForViewer,
+} from "../../../lib/userNotificationReadState"
 import { useEffect } from "react"
 
 export function NotificationDropdown() {
   const { auth } = useAuth()
   const email = auth?.user?.email ?? null
-
   const dropdownRef = useRef(null)
   const [showNotifications, setShowNotifications] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -30,7 +33,7 @@ export function NotificationDropdown() {
     setLoading(true)
     try {
       const res = await getUserNotifications(email)
-      setNotifications(res.data || [])
+      setNotifications(mapNotificationsForViewer(res.data || [], email))
     } catch (err) {
       console.error("Failed to fetch user notifications:", err)
     } finally {
@@ -44,16 +47,18 @@ export function NotificationDropdown() {
   }, [email, fetchNotifications])
 
   // ── SSE — prepend new notifications in real-time ────────────────────────
-  const handleSSENotification = useCallback((notif) => {
-    setNotifications((prev) => {
-      // Avoid duplicates
-      if (prev.some((n) => n._id === notif._id)) return prev
-      return [notif, ...prev]
-    })
-    toast.info(notif.title || "New notification", {
-      description: notif.message,
-    })
-  }, [])
+  const handleSSENotification = useCallback(
+    (notif) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === notif._id)) return prev
+        return [normalizeNotificationForViewer(notif, email), ...prev]
+      })
+      toast.info(notif.title || "New notification", {
+        description: notif.message,
+      })
+    },
+    [email]
+  )
 
   useNotificationSSE(email, handleSSENotification)
 
@@ -69,21 +74,35 @@ export function NotificationDropdown() {
   }, [])
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleMarkAsRead = async (id) => {
+  const handleMarkAsRead = async (notif) => {
     try {
-      await markAsRead(id)
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
-    } catch {
-      toast.error("Failed to mark as read")
+      const result = await markAsRead(notif._id)
+      const updated = result?.data
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+            : n
+        )
+      )
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark as read")
     }
   }
 
-  const handleMarkAsUnread = async (id) => {
+  const handleMarkAsUnread = async (notif) => {
     try {
-      await markAsUnread(id)
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: false } : n)))
-    } catch {
-      toast.error("Failed to mark as unread")
+      const result = await markAsUnread(notif._id)
+      const updated = result?.data
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+            : n
+        )
+      )
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark as unread")
     }
   }
 
@@ -92,10 +111,11 @@ export function NotificationDropdown() {
     setMarkingAll(true)
     try {
       await markAllAsRead(email)
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      const res = await getUserNotifications(email)
+      setNotifications(mapNotificationsForViewer(res.data || [], email))
       toast.success("All notifications marked as read")
-    } catch {
-      toast.error("Failed to mark all as read")
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark all as read")
     } finally {
       setMarkingAll(false)
     }
@@ -175,7 +195,7 @@ export function NotificationDropdown() {
                       {!notif.isRead ? (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif) }}
                           className="rounded p-1 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
                           title="Mark as read"
                         >
@@ -184,7 +204,7 @@ export function NotificationDropdown() {
                       ) : (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleMarkAsUnread(notif._id) }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsUnread(notif) }}
                           className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors"
                           title="Mark as unread"
                         >

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
@@ -11,6 +12,10 @@ import {
   deleteNotification,
 } from "../../services/notificationService";
 import { getNotificationTargetPath } from "../../lib/notificationNavigation";
+import {
+  normalizeNotificationForViewer,
+  mapNotificationsForViewer,
+} from "../../lib/userNotificationReadState";
 import {
   FiBell,
   FiSearch,
@@ -41,7 +46,7 @@ function HomeNotificationDropdown({ email }) {
     setLoading(true);
     try {
       const res = await getUserNotifications(email);
-      setNotifications(res.data || []);
+      setNotifications(mapNotificationsForViewer(res.data || [], email));
     } catch (err) {
       console.error(err);
     } finally {
@@ -51,12 +56,15 @@ function HomeNotificationDropdown({ email }) {
 
   useEffect(() => { load(); }, [load]);
 
-  useNotificationSSE(email, useCallback((notif) => {
-    setNotifications((prev) => {
-      if (prev.some((n) => n._id === notif._id)) return prev;
-      return [notif, ...prev];
-    });
-  }, []));
+  useNotificationSSE(
+    email,
+    useCallback((notif) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === notif._id)) return prev;
+        return [normalizeNotificationForViewer(notif, email), ...prev];
+      });
+    }, [email])
+  );
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -64,20 +72,42 @@ function HomeNotificationDropdown({ email }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleMarkAsRead = async (id, e) => {
+  const handleMarkAsRead = async (notif, e) => {
     e.stopPropagation();
     try {
-      await markAsRead(id);
-      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: true } : n));
-    } catch {}
+      const result = await markAsRead(notif._id);
+      const updated = result?.data;
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+            : n
+        )
+      );
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Could not mark as read";
+      toast.error(msg);
+    }
   };
 
-  const handleMarkAsUnread = async (id, e) => {
+  const handleMarkAsUnread = async (notif, e) => {
     e.stopPropagation();
     try {
-      await markAsUnread(id);
-      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: false } : n));
-    } catch {}
+      const result = await markAsUnread(notif._id);
+      const updated = result?.data;
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+            : n
+        )
+      );
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Could not mark as unread";
+      toast.error(msg);
+    }
   };
 
   const requestDelete = (notif, e) => {
@@ -97,6 +127,7 @@ function HomeNotificationDropdown({ email }) {
       setNotifications((prev) => prev.filter((n) => n._id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch {
+      /* ignore */
     } finally {
       setDeleteBusy(false);
     }
@@ -107,8 +138,12 @@ function HomeNotificationDropdown({ email }) {
     setMarkingAll(true);
     try {
       await markAllAsRead(email);
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {} finally {
+      await load();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Could not mark all as read";
+      toast.error(msg);
+    } finally {
       setMarkingAll(false);
     }
   };
@@ -118,9 +153,20 @@ function HomeNotificationDropdown({ email }) {
     if (!path) return;
     if (!notif.isRead) {
       try {
-        await markAsRead(notif._id);
-        setNotifications((prev) => prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n)));
-      } catch {}
+        const result = await markAsRead(notif._id);
+        const updated = result?.data;
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n._id === notif._id
+              ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+              : n
+          )
+        );
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message || err?.message || "Could not mark as read";
+        toast.error(msg);
+      }
     }
     setOpen(false);
     navigate(path);
@@ -398,7 +444,7 @@ function HomeNotificationDropdown({ email }) {
                       {!notif.isRead ? (
                         <button
                           type="button"
-                          onClick={(e) => handleMarkAsRead(notif._id, e)}
+                          onClick={(e) => handleMarkAsRead(notif, e)}
                           title="Mark as read"
                           style={{
                             display: "flex",
@@ -418,7 +464,7 @@ function HomeNotificationDropdown({ email }) {
                       ) : (
                         <button
                           type="button"
-                          onClick={(e) => handleMarkAsUnread(notif._id, e)}
+                          onClick={(e) => handleMarkAsUnread(notif, e)}
                           title="Mark as unread"
                           style={{
                             display: "flex",

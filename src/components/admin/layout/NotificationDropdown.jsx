@@ -13,13 +13,16 @@ import {
   deleteNotification,
 } from "../../../services/notificationService"
 import { getNotificationTargetPath } from "../../../lib/notificationNavigation"
+import {
+  normalizeNotificationForViewer,
+  mapNotificationsForViewer,
+} from "../../../lib/userNotificationReadState"
 import { DeleteNotificationDialog } from "../../notifications/DeleteNotificationDialog"
 
 export function NotificationDropdown() {
   const { auth } = useAuth()
   const navigate = useNavigate()
   const adminEmail = auth?.user?.email ?? null
-
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [markingAll, setMarkingAll] = useState(false)
@@ -34,7 +37,7 @@ export function NotificationDropdown() {
     if (!adminEmail) return
     try {
       const res = await getUserNotifications(adminEmail)
-      setNotifications(res.data || [])
+      setNotifications(mapNotificationsForViewer(res.data || [], adminEmail))
     } catch (error) {
       console.error("Failed to fetch notifications:", error)
     }
@@ -43,15 +46,19 @@ export function NotificationDropdown() {
   useEffect(() => { fetchNotifs() }, [fetchNotifs])
 
   // ── SSE — admins receive real-time push for every new notification ───────
-  const handleSSENotification = useCallback((notif) => {
-    setNotifications((prev) => {
-      if (prev.some((n) => n._id === notif._id)) return prev
-      return [notif, ...prev]
-    })
-    toast.info(`New notification for ${notif.email}`, {
-      description: notif.title || notif.type?.replace(/_/g, " "),
-    })
-  }, [])
+  const handleSSENotification = useCallback(
+    (notif) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === notif._id)) return prev
+        if (!adminEmail) return prev
+        return [normalizeNotificationForViewer(notif, adminEmail), ...prev]
+      })
+      toast.info(`New notification for ${notif.email}`, {
+        description: notif.title || notif.type?.replace(/_/g, " "),
+      })
+    },
+    [adminEmail]
+  )
 
   useNotificationSSE(adminEmail, handleSSENotification)
 
@@ -67,21 +74,35 @@ export function NotificationDropdown() {
   }, [])
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleMarkAsRead = async (id) => {
+  const handleMarkAsRead = async (notif) => {
     try {
-      await markAsRead(id)
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
-    } catch {
-      toast.error("Failed to mark as read")
+      const result = await markAsRead(notif._id)
+      const updated = result?.data
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, adminEmail)
+            : n
+        )
+      )
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark as read")
     }
   }
 
-  const handleMarkAsUnread = async (id) => {
+  const handleMarkAsUnread = async (notif) => {
     try {
-      await markAsUnread(id)
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: false } : n)))
-    } catch {
-      toast.error("Failed to mark as unread")
+      const result = await markAsUnread(notif._id)
+      const updated = result?.data
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, adminEmail)
+            : n
+        )
+      )
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark as unread")
     }
   }
 
@@ -111,7 +132,7 @@ export function NotificationDropdown() {
   const openNotification = async (notif) => {
     const path = getNotificationTargetPath(notif)
     if (!path) return
-    if (!notif.isRead) await handleMarkAsRead(notif._id)
+    if (!notif.isRead) await handleMarkAsRead(notif)
     setShowNotifications(false)
     navigate(path)
   }
@@ -121,10 +142,11 @@ export function NotificationDropdown() {
     setMarkingAll(true)
     try {
       await markAllAsRead(adminEmail)
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+      const res = await getUserNotifications(adminEmail)
+      setNotifications(mapNotificationsForViewer(res.data || [], adminEmail))
       toast.success("All notifications marked as read")
-    } catch {
-      toast.error("Failed to mark all as read")
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark all as read")
     } finally {
       setMarkingAll(false)
     }
@@ -287,7 +309,7 @@ export function NotificationDropdown() {
                       {!notif.isRead ? (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif) }}
                         className="rounded-lg p-1.5 transition-colors h-8 w-8 inline-flex items-center justify-center"
                         style={{ color: "#b45309", border: "1px solid rgba(249,191,59,0.35)" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.15)" }}
@@ -299,7 +321,7 @@ export function NotificationDropdown() {
                       ) : (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleMarkAsUnread(notif._id) }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsUnread(notif) }}
                         className="rounded-lg p-1.5 transition-colors h-8 w-8 inline-flex items-center justify-center"
                         style={{ color: "#64748b", border: "1px solid #e2e8f0" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9" }}
