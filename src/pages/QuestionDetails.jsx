@@ -237,7 +237,7 @@ function QuestionDetailsPage() {
 
     try {
       await qaApi.deleteQuestion(id);
-      navigate("/questions", { replace: true });
+      navigate("/home", { replace: true });
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Delete failed");
     }
