@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, Routes, Route, Navigate } from "react-router-dom";
+import { toast } from "sonner";
 import { getNotificationTargetPath } from "../../lib/notificationNavigation";
+import {
+  normalizeNotificationForViewer,
+  mapNotificationsForViewer,
+} from "../../lib/userNotificationReadState";
 import { useAuth } from "../../context/AuthContext";
 import { qaApi } from "../../services/qa.api";
 import { API_ORIGIN } from "../../lib/api";
@@ -506,38 +511,61 @@ function NotificationsFeed() {
     setLoading(true);
     try {
       const res = await getUserNotifications(email);
-      setNotifications(res.data || []);
-    } catch {} finally { setLoading(false); }
+      setNotifications(mapNotificationsForViewer(res.data || [], email));
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [email]);
 
   useEffect(() => { load(); }, [load]);
 
-  useNotificationSSE(email, useCallback((notif) => {
-    setNotifications((prev) => {
-      if (prev.some((n) => n._id === notif._id)) return prev;
-      return [notif, ...prev];
-    });
-  }, []));
+  useNotificationSSE(
+    email,
+    useCallback((notif) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === notif._id)) return prev;
+        return [normalizeNotificationForViewer(notif, email), ...prev];
+      });
+    }, [email])
+  );
 
   const handleMarkAll = async () => {
     try {
       await markAllAsRead(email);
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {}
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not mark all as read");
+    }
   };
 
-  const markRead = async (id) => {
+  const markRead = async (n) => {
     try {
-      await markAsRead(id);
-      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: true } : n));
-    } catch {}
+      const result = await markAsRead(n._id);
+      const updated = result?.data;
+      setNotifications((prev) =>
+        prev.map((x) =>
+          x._id === n._id ? normalizeNotificationForViewer({ ...x, ...updated }, email) : x
+        )
+      );
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not mark as read");
+    }
   };
 
-  const markUnread = async (id) => {
+  const markUnread = async (n) => {
     try {
-      await markAsUnread(id);
-      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: false } : n));
-    } catch {}
+      const result = await markAsUnread(n._id);
+      const updated = result?.data;
+      setNotifications((prev) =>
+        prev.map((x) =>
+          x._id === n._id ? normalizeNotificationForViewer({ ...x, ...updated }, email) : x
+        )
+      );
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not mark as unread");
+    }
   };
 
   const requestDeleteNotif = (n) => {
@@ -556,6 +584,7 @@ function NotificationsFeed() {
       setNotifications((prev) => prev.filter((x) => x._id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch {
+      /* ignore */
     } finally {
       setDeleteBusy(false);
     }
@@ -564,11 +593,11 @@ function NotificationsFeed() {
   const onNotificationClick = async (n) => {
     const path = getNotificationTargetPath(n);
     if (path) {
-      if (!n.isRead) await markRead(n._id);
+      if (!n.isRead) await markRead(n);
       navigate(path);
       return;
     }
-    if (!n.isRead) await markRead(n._id);
+    if (!n.isRead) await markRead(n);
   };
 
   return (
@@ -680,13 +709,13 @@ function NotificationsFeed() {
                   <p style={{ color: n.isRead ? "#94a3b8" : "#475569", fontSize: "0.875rem", margin: 0, lineHeight: 1.5 }}>
                     {n.message}
                   </p>
-                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.65rem" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.65rem", flexWrap: "wrap" }}>
                     {!n.isRead ? (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          markRead(n._id);
+                          markRead(n);
                         }}
                         style={{
                           border: "1px solid #bfdbfe",
@@ -706,7 +735,7 @@ function NotificationsFeed() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          markUnread(n._id);
+                          markUnread(n);
                         }}
                         style={{
                           border: "1px solid #e2e8f0",

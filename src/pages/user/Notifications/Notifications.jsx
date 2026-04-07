@@ -26,7 +26,12 @@ import {
   getUserNotifications,
 } from "../../../services/notificationService"
 import { useAuth } from "../../../context/AuthContext"
+import { toast } from "sonner"
 import { getNotificationTargetPath } from "../../../lib/notificationNavigation"
+import {
+  normalizeNotificationForViewer,
+  mapNotificationsForViewer,
+} from "../../../lib/userNotificationReadState"
 import { DeleteNotificationDialog } from "../../../components/notifications/DeleteNotificationDialog"
 import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
 
@@ -50,7 +55,6 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
   const { auth } = useAuth()
   const navigate = useNavigate()
   const email = auth?.user?.email ?? null
-
   const [loading, setLoading] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   const [notifications, setNotifications] = useState([])
@@ -67,7 +71,7 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
     setLoading(true)
     try {
       const res = await getUserNotifications(email)
-      setNotifications(res.data || [])
+      setNotifications(mapNotificationsForViewer(res.data || [], email))
     } catch (err) {
       console.error("Failed to load user notifications:", err)
       setNotifications([])
@@ -88,9 +92,10 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
   const onStreamNotification = useCallback((notif) => {
     setNotifications((prev) => {
       if (prev.some((n) => n._id === notif._id)) return prev
-      return [notif, ...prev]
+      if (!email) return prev
+      return [normalizeNotificationForViewer(notif, email), ...prev]
     })
-  }, [])
+  }, [email])
 
   useNotificationSSE(email, onStreamNotification)
 
@@ -102,21 +107,35 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
   const hasMoreEmbedded = embedded && filteredList.length > maxEmbedded
   const displayList = embedded ? filteredList.slice(0, maxEmbedded) : filteredList
 
-  const handleMarkAsRead = async (id) => {
+  const handleMarkAsRead = async (notif) => {
     try {
-      await markAsRead(id)
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
+      const result = await markAsRead(notif._id)
+      const updated = result?.data
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+            : n
+        )
+      )
     } catch (err) {
-      console.error("Failed to mark notification as read:", err)
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark as read")
     }
   }
 
-  const handleMarkAsUnread = async (id) => {
+  const handleMarkAsUnread = async (notif) => {
     try {
-      await markAsUnread(id)
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: false } : n)))
+      const result = await markAsUnread(notif._id)
+      const updated = result?.data
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notif._id
+            ? normalizeNotificationForViewer({ ...n, ...updated }, email)
+            : n
+        )
+      )
     } catch (err) {
-      console.error("Failed to mark notification as unread:", err)
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark as unread")
     }
   }
 
@@ -125,9 +144,10 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
     setMarkingAll(true)
     try {
       await markAllAsRead(email)
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      const res = await getUserNotifications(email)
+      setNotifications(mapNotificationsForViewer(res.data || [], email))
     } catch (err) {
-      console.error("Failed to mark all as read:", err)
+      toast.error(err?.response?.data?.message || err?.message || "Failed to mark all as read")
     } finally {
       setMarkingAll(false)
     }
@@ -158,7 +178,7 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
   const openNotification = async (notif) => {
     const path = getNotificationTargetPath(notif)
     if (!path) return
-    if (!notif.isRead) await handleMarkAsRead(notif._id)
+    if (!notif.isRead) await handleMarkAsRead(notif)
     navigate(path)
   }
 
@@ -368,7 +388,7 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleMarkAsRead(notif._id)
+                              handleMarkAsRead(notif)
                             }}
                             className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
                             title="Mark as read"
@@ -382,7 +402,7 @@ export function Notifications({ embedded = false, maxItems: maxItemsProp, classN
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleMarkAsUnread(notif._id)
+                              handleMarkAsUnread(notif)
                             }}
                             className="h-8 w-8 p-0 text-slate-600 hover:bg-slate-100"
                             title="Mark as unread"
