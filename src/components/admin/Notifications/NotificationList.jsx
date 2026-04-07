@@ -1,9 +1,9 @@
-import { CheckCircle2, Info, MessageCircle, Star, Target, Trash2, ShieldAlert, RotateCcw } from "lucide-react"
+import { CheckCircle2, Info, MessageCircle, Star, Target, Trash2, ShieldAlert, RotateCcw, Pencil } from "lucide-react"
 import { Card, CardContent } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
 import { Button } from "../../../components/ui/button"
 
-export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, onDelete }) {
+export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, onDelete, onEdit }) {
   const getIcon = (type) => {
     switch (type?.toLowerCase()) {
       case "answer": return <MessageCircle className="h-5 w-5 text-blue-500" />
@@ -92,6 +92,16 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
             </div>
 
             <div className="flex sm:flex-col items-center justify-end sm:justify-start gap-2 mt-4 sm:mt-0 sm:ml-4 sm:pl-4 sm:border-l border-border/50">
+              {onEdit ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEdit(notif)}
+                  className="h-8 w-full justify-start text-xs text-slate-700 hover:bg-slate-100"
+                >
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                </Button>
+              ) : null}
               {!notif.isRead ? (
                 <Button 
                   variant="ghost" 
