@@ -314,6 +314,14 @@ function QuestionsPage() {
                   </div>
                 </div>
                 <p className="text-sm text-slate-700 mt-1 line-clamp-2">{q.body}</p>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  <span className="text-xs px-2 py-1 rounded bg-slate-100">
+                    {q.answerCount ?? 0} answers
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded bg-slate-100">
+                    {q.voteScore ?? 0} votes
+                  </span>
+                </div>
                 <p className="text-xs text-slate-500 mt-2">
                   Asked by {displayName(q.authorId)}
                 </p>

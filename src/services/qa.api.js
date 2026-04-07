@@ -63,6 +63,10 @@ export const qaApi = {
         data: { url },
       })
     ),
+  voteQuestion: async (questionId) =>
+    unwrap(await api.post(`/questions/${questionId}/vote`, {}, withAuth())),
+  unvoteQuestion: async (questionId) =>
+    unwrap(await api.delete(`/questions/${questionId}/vote`, withAuth())),
   editQuestion: async (id, payload) =>
     unwrap(await api.put(`/questions/${id}`, payload, withAuth())),
   deleteQuestion: async (id) => unwrap(await api.delete(`/questions/${id}`, withAuth())),
