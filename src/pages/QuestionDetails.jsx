@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
 import { API_ORIGIN } from "../lib/api";
 import { ImageDropZone } from "../components/ImageDropZone";
@@ -68,6 +68,7 @@ const getAnswerValidationError = (text) => {
 function QuestionDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [newAnswer, setNewAnswer] = useState("");
@@ -115,6 +116,36 @@ function QuestionDetailsPage() {
   useEffect(() => {
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (loading || !answers.length) return;
+    const hash = (location.hash || "").trim();
+    const m = /^#answer-(.+)$/.exec(hash);
+    if (!m) return;
+
+    const answerAnchor = `answer-${decodeURIComponent(m[1])}`;
+    let cancelled = false;
+    let highlightTimer;
+
+    const scrollTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      const el = document.getElementById(answerAnchor);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-amber-400", "ring-offset-2", "rounded-lg");
+      highlightTimer = window.setTimeout(() => {
+        if (!cancelled) {
+          el.classList.remove("ring-2", "ring-amber-400", "ring-offset-2", "rounded-lg");
+        }
+      }, 2600);
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(highlightTimer);
+    };
+  }, [loading, answers, location.hash]);
 
   useEffect(() => {
     if (!questionMenuOpen) return;
@@ -380,9 +411,12 @@ function QuestionDetailsPage() {
 
   const AnswerCard = ({ answer, depth }) => {
     const isBest = bestAnswerId && answer._id === bestAnswerId;
+    const domId =
+      answer?._id != null ? `answer-${String(answer._id)}` : undefined;
     return (
       <div
-        className={`border rounded-lg p-3 ${isBest ? "border-green-500 bg-green-50" : ""} ${
+        id={domId}
+        className={`border rounded-lg p-3 scroll-mt-24 ${isBest ? "border-green-500 bg-green-50" : ""} ${
           depth > 0 ? "ml-4 border-l-2 border-slate-200 pl-4" : ""
         }`}
       >

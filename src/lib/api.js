@@ -70,8 +70,12 @@ api.interceptors.response.use(
 
     try {
       if (!refreshPromise) {
+        const storedRefresh = getStoredAuth().refreshToken;
         refreshPromise = refreshClient
-          .post("/auth/refresh-token")
+          .post(
+            "/auth/refresh-token",
+            storedRefresh ? { refreshToken: storedRefresh } : {}
+          )
           .then((res) => res.data)
           .finally(() => {
             refreshPromise = null;

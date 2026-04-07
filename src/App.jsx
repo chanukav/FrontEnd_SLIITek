@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner"
 import { AdminLayout } from "./components/admin/layout/AdminLayout"
 import { Dashboard } from "./pages/admin/Dashboard/Dashboard"
@@ -7,9 +7,7 @@ import { Reports } from "./pages/admin/Reports/Reports"
 import { Notifications } from "./pages/admin/Notifications/Notifications"
 import { Settings } from "./pages/admin/Settings/Settings"
 import { Profile as UserProfile } from "./pages/user/Profile/Profile"
-import { Notifications as UserNotifications } from "./pages/user/Notifications/Notifications"
 import { Messages as UserMessages } from "./pages/user/Messages/Messages"
-import { Settings as UserSettings } from "./pages/user/Settings/Settings"
 import "./App.css";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -112,7 +110,7 @@ function App() {
             path="/dashboard/user/notifications"
             element={
               <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
-                <UserNotifications />
+                <Navigate to="/dashboard/user?tab=notifications" replace />
               </ProtectedRoute>
             }
           />
@@ -128,7 +126,7 @@ function App() {
             path="/dashboard/user/settings"
             element={
               <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
-                <UserSettings />
+                <Navigate to="/dashboard/user?tab=settings" replace />
               </ProtectedRoute>
             }
           />

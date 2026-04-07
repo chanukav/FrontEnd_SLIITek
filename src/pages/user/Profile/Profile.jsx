@@ -126,6 +126,7 @@ export function Profile() {
       if (updated) {
         login({
           token: auth.token,
+          refreshToken: auth.refreshToken,
           user: {
             ...auth.user,
             name: updated.name,
