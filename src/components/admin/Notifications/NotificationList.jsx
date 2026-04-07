@@ -39,12 +39,21 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
             className={`group flex flex-col sm:flex-row shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 border py-3 px-4 bg-white relative overflow-hidden ${
               notif.isRead 
                 ? "opacity-75 border-border/50 text-muted-foreground" 
-                : "border-border border-l-4 border-l-blue-500 text-slate-800"
+                : "border-border text-slate-800"
             }`}
-            style={{ animationDelay: `${idx * 50}ms`, animationFillMode: "both" }}
+            style={{
+              animationDelay: `${idx * 50}ms`,
+              animationFillMode: "both",
+              borderLeft: !notif.isRead ? "4px solid #f9bf3b" : undefined
+            }}
           >
             <div className="flex items-start gap-4 flex-1">
-              <div className={`mt-1 flex-shrink-0 p-2 rounded-full ${notif.isRead ? "bg-slate-100" : "bg-blue-50"}`}>
+              <div
+                className="mt-1 flex-shrink-0 p-2 rounded-full"
+                style={{
+                  background: notif.isRead ? "#f1f5f9" : "rgba(249,191,59,0.15)"
+                }}
+              >
                 {getIcon(notif.type)}
               </div>
               
@@ -55,7 +64,7 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
                       {notif.title || formatType(notif.type)}
                     </span>
                     {!notif.isRead && (
-                      <span className="flex h-2 w-2 rounded-full bg-blue-500"></span>
+                      <span className="flex h-2 w-2 rounded-full" style={{ background: "#f9bf3b" }}></span>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
@@ -87,7 +96,10 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => onMarkAsRead(notif._id)}
-                  className="h-8 w-full justify-start text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
+                  className="h-8 w-full justify-start text-xs transition-colors"
+                  style={{ color: "#b45309", "--tw-bg-opacity": 1 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(249,191,59,0.15)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
                 >
                   <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark Read
                 </Button>

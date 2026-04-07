@@ -81,26 +81,56 @@ export function NotificationDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      {/* Bell button */}
+      <button
         onClick={() => setShowNotifications(!showNotifications)}
-        className="-m-2.5 p-2.5 text-white/80 hover:text-white relative transition-colors"
+        className="relative p-2 rounded-xl transition-all duration-200"
+        style={
+          showNotifications
+            ? { background: "rgba(249,191,59,0.15)", color: "#f9bf3b", boxShadow: "0 0 0 1px rgba(249,191,59,0.3)" }
+            : { color: "rgba(255,255,255,0.7)" }
+        }
+        onMouseEnter={e => { if (!showNotifications) e.currentTarget.style.color = "#fff" }}
+        onMouseLeave={e => { if (!showNotifications) e.currentTarget.style.color = "rgba(255,255,255,0.7)" }}
       >
         <span className="sr-only">View notifications</span>
-        <Bell className="h-6 w-6" aria-hidden="true" />
+        <Bell className="h-5 w-5" aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute top-2 right-2.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-header">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span
+            className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full"
+            style={{ background: "#ef4444", boxShadow: "0 0 0 2px #00205B" }}
+          >
+            <span
+              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+              style={{ background: "#f87171" }}
+            />
           </span>
         )}
       </button>
 
       {showNotifications && (
-        <div className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-xl bg-white py-2 shadow-2xl ring-1 ring-black/5 focus:outline-none z-[100] animate-in slide-in-from-top-2 fade-in duration-200">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div
+          className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl bg-white py-2 shadow-2xl focus:outline-none z-[100]"
+          style={{
+            border: "1px solid #e2e8f0",
+            borderTop: "3px solid #f9bf3b",
+            boxShadow: "0 16px 48px rgba(0,32,91,0.18)",
+            animation: "fadeSlideUp 0.18s ease both",
+          }}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between px-4 py-3 border-b border-gray-100"
+            style={{ background: "linear-gradient(135deg, rgba(0,32,91,0.03) 0%, transparent 100%)" }}
+          >
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+              <span className="h-2 w-2 rounded-full" style={{ background: "#f9bf3b" }} />
+              <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
               {unreadCount > 0 && (
-                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                <span
+                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide"
+                  style={{ background: "rgba(249,191,59,0.15)", color: "#b45309", border: "1px solid rgba(249,191,59,0.3)" }}
+                >
                   {unreadCount} new
                 </span>
               )}
@@ -109,32 +139,56 @@ export function NotificationDropdown() {
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={markingAll}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold disabled:opacity-50 transition-colors px-2.5 py-1 rounded-lg"
+                style={{ color: "#b45309", background: "rgba(249,191,59,0.1)" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.18)" }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(249,191,59,0.1)" }}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 {markingAll ? "Marking…" : "Mark all read"}
               </button>
             )}
           </div>
-          
-          <div className="max-h-[28rem] overflow-y-auto">
+
+          {/* List */}
+          <div className="max-h-[28rem] overflow-y-auto custom-scrollbar">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
-                <Info className="h-8 w-8 text-gray-300 mb-2" />
-                No notifications right now
+              <div className="px-4 py-10 text-center text-sm text-gray-500 flex flex-col items-center gap-2">
+                <div
+                  className="h-12 w-12 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(249,191,59,0.1)" }}
+                >
+                  <Info className="h-6 w-6" style={{ color: "#f9bf3b" }} />
+                </div>
+                <p className="font-medium text-gray-600">All caught up!</p>
+                <p className="text-xs text-gray-400">No notifications right now.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {notifications.slice(0, 10).map((notif) => (
-                  <div 
-                    key={notif._id} 
-                    className={`relative flex items-start px-4 py-3 hover:bg-gray-50 transition-colors ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                  <div
+                    key={notif._id}
+                    className="relative flex items-start px-4 py-3 transition-colors cursor-default"
+                    style={
+                      !notif.isRead
+                        ? { background: "rgba(249,191,59,0.05)" }
+                        : {}
+                    }
+                    onMouseEnter={e => { e.currentTarget.style.background = !notif.isRead ? "rgba(249,191,59,0.09)" : "#f8fafc" }}
+                    onMouseLeave={e => { e.currentTarget.style.background = !notif.isRead ? "rgba(249,191,59,0.05)" : "" }}
                   >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <p className={`text-sm ${!notif.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
-                        {notif.title || notif.type?.replace(/_/g, ' ')}
+                    {/* Unread indicator bar */}
+                    {!notif.isRead && (
+                      <div
+                        className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full"
+                        style={{ background: "#f9bf3b" }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0 pr-2 pl-1">
+                      <p className={`text-sm ${!notif.isRead ? "font-semibold text-gray-900" : "font-medium text-gray-700"}`}>
+                        {notif.title || notif.type?.replace(/_/g, " ")}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">{notif.message}</p>
+                      <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{notif.message}</p>
                       <p className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
                         <span>{new Date(notif.createdAt).toLocaleDateString()}</span>
                         {notif.email && (
@@ -148,10 +202,13 @@ export function NotificationDropdown() {
                     {!notif.isRead && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
-                        className="flex-shrink-0 ml-2 rounded p-1 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                        className="flex-shrink-0 ml-2 rounded-lg p-1.5 transition-colors"
+                        style={{ color: "#b45309" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.15)" }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
                         title="Mark as read"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
@@ -159,13 +216,19 @@ export function NotificationDropdown() {
               </div>
             )}
           </div>
-          
-          <div className="border-t border-gray-100 px-4 py-3">
-            {/* ✅ Fixed: was /notifications, now /admin/notifications */}
-            <Link 
+
+          {/* Footer */}
+          <div
+            className="border-t border-gray-100 px-4 py-3"
+            style={{ background: "linear-gradient(135deg, rgba(0,32,91,0.02) 0%, transparent 100%)" }}
+          >
+            <Link
               to="/admin/notifications"
               onClick={() => setShowNotifications(false)}
-              className="block w-full text-center text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full text-center text-sm font-semibold py-1.5 rounded-lg transition-all"
+              style={{ color: "#b45309", background: "rgba(249,191,59,0.08)", border: "1px solid rgba(249,191,59,0.2)" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.15)" }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(249,191,59,0.08)" }}
             >
               View all notifications
             </Link>
