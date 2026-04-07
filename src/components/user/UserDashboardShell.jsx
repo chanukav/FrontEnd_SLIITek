@@ -5,6 +5,7 @@ import {
   Users,
   Bell,
   User,
+  MessageSquare,
   Settings,
   Search,
   ChevronRight,
@@ -18,6 +19,7 @@ const menuItems = [
   { label: "Questions", to: "/dashboard/user/questions", icon: HelpCircle },
   { label: "Communities", to: "/dashboard/user/communities", icon: Users },
   { label: "Notifications", to: "/dashboard/user/notifications", icon: Bell },
+  { label: "Messages", to: "/dashboard/user/messages", icon: MessageSquare },
   { label: "Profile", to: "/dashboard/user/profile", icon: User },
   { label: "Settings", to: "/dashboard/user/settings", icon: Settings },
 ];
