@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
 import { API_ORIGIN } from "../lib/api";
 import { ImageDropZone } from "../components/ImageDropZone";
+import { QuestionImageGallery } from "../components/QuestionImageGallery";
 import { FaRegThumbsDown, FaRegThumbsUp, FaThumbsDown, FaThumbsUp } from "react-icons/fa";
 
 const displayName = (user) =>
@@ -47,9 +48,11 @@ function QuestionDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [imagePreviewSrc, setImagePreviewSrc] = useState(null);
+  const [questionMenuOpen, setQuestionMenuOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
+  const questionMenuRef = useRef(null);
 
   const auth = (() => {
     try {
@@ -85,13 +88,23 @@ function QuestionDetailsPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!imagePreviewSrc) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setImagePreviewSrc(null);
+    if (!questionMenuOpen) return;
+    const onDown = (e) => {
+      if (e.key === "Escape") setQuestionMenuOpen(false);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [imagePreviewSrc]);
+    const onClick = (e) => {
+      const el = questionMenuRef.current;
+      if (!el) return;
+      if (el.contains(e.target)) return;
+      setQuestionMenuOpen(false);
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [questionMenuOpen]);
 
   const submitAnswer = async (e) => {
     e.preventDefault();
@@ -159,39 +172,9 @@ function QuestionDetailsPage() {
     }
   };
 
-  const onEditQuestion = async () => {
-    if (!auth?.token) {
-      navigate("/login");
-      return;
-    }
+  const onEditQuestion = () => {
     if (!isQuestionOwner) return;
-
-    const nextTitle = window.prompt("Edit question title", question.title);
-    if (nextTitle === null) return;
-    const nextBody = window.prompt("Edit question body", question.body);
-    if (nextBody === null) return;
-
-    const nextCategory = window.prompt(
-      "Edit question category (Academic, Career & Internships, Campus Life, Technical / Programming Help, Study Resources, Clubs & Events, General / Other)",
-      question.category || "General / Other"
-    );
-    if (nextCategory === null) return;
-
-    if (!nextTitle.trim() || !nextBody.trim() || !nextCategory.trim()) {
-      setError("Title, body, and category are required");
-      return;
-    }
-
-    try {
-      await qaApi.editQuestion(id, {
-        title: nextTitle,
-        body: nextBody,
-        category: nextCategory,
-      });
-      await load();
-    } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Edit failed");
-    }
+    navigate(`/questions/${id}/edit`);
   };
 
   const onDeleteQuestion = async () => {
@@ -200,9 +183,6 @@ function QuestionDetailsPage() {
       return;
     }
     if (!isQuestionOwner) return;
-
-    const ok = window.confirm("Delete this question? This cannot be undone.");
-    if (!ok) return;
 
     try {
       await qaApi.deleteQuestion(id);
@@ -420,67 +400,64 @@ function QuestionDetailsPage() {
         <div className="flex justify-between items-start gap-3">
           <h1 className="text-2xl font-bold">{question.title}</h1>
           <div className="flex items-center gap-2">
-            {isQuestionOwner && (
-              <>
-                <button
-                  type="button"
-                  className="px-3 py-1 rounded border text-sm"
-                  onClick={onEditQuestion}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1 rounded border border-red-300 text-red-600 text-sm"
-                  onClick={onDeleteQuestion}
-                >
-                  Delete
-                </button>
-              </>
-            )}
             {question.category && (
               <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.category}</span>
             )}
             <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.status}</span>
+            {isQuestionOwner && (
+              <div className="relative ml-2" ref={questionMenuRef}>
+                <button
+                  type="button"
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  onClick={() => setQuestionMenuOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={questionMenuOpen}
+                  title="More"
+                >
+                  <span className="text-xl leading-none">⋯</span>
+                </button>
+                {questionMenuOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg overflow-hidden z-20"
+                    role="menu"
+                  >
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                      role="menuitem"
+                      onClick={() => {
+                        setQuestionMenuOpen(false);
+                        onEditQuestion();
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      role="menuitem"
+                      onClick={() => {
+                        setQuestionMenuOpen(false);
+                        setConfirmDeleteOpen(true);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <p className="mt-2 text-slate-700">{question.body}</p>
 
-        {question.images?.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-3">
-            {question.images.map((img) => (
-              <div
-                key={`${img.blobName || ""}-${img.url}`}
-                className="relative inline-block rounded-lg border border-slate-200 bg-slate-50 overflow-hidden"
-              >
-                <button
-                  type="button"
-                  className="block p-0 border-0 bg-transparent cursor-pointer"
-                  onClick={() => setImagePreviewSrc(questionImageSrc(img))}
-                  title="Click to preview"
-                >
-                  <img
-                    src={questionImageSrc(img)}
-                    alt="Question attachment"
-                    className="h-28 w-28 object-cover"
-                  />
-                </button>
-                {isQuestionOwner && (
-                  <button
-                    type="button"
-                    className="absolute top-1 right-1 rounded bg-red-600/90 px-2 py-0.5 text-xs text-white opacity-90 hover:opacity-100 z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveQuestionImage(img.url);
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <QuestionImageGallery
+          images={question.images || []}
+          origin={API_ORIGIN}
+          maxPreview={4}
+          canRemove={isQuestionOwner}
+          onRemoveUrl={(url) => onRemoveQuestionImage(url)}
+        />
 
         {isQuestionOwner && (
           <div className="mt-3 space-y-1">
@@ -541,27 +518,43 @@ function QuestionDetailsPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
-      {imagePreviewSrc ? (
+      {confirmDeleteOpen ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setImagePreviewSrc(null)}
+          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
           role="presentation"
+          onClick={() => setConfirmDeleteOpen(false)}
         >
-          <button
-            type="button"
-            className="absolute top-4 right-4 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/20"
-            onClick={() => setImagePreviewSrc(null)}
-          >
-            Close
-          </button>
-          <img
-            src={imagePreviewSrc}
-            alt="Preview"
-            className="max-h-[90vh] max-w-full rounded-lg object-contain shadow-xl"
+          <div
+            className="w-full max-w-md rounded-xl bg-white shadow-xl p-5"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <h3 className="text-lg font-semibold">Delete question?</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              This cannot be undone. Your question and screenshots will be removed.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border"
+                onClick={() => setConfirmDeleteOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={async () => {
+                  setConfirmDeleteOpen(false);
+                  await onDeleteQuestion();
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
+
     </div>
   );
 }
