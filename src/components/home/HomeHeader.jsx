@@ -3,8 +3,25 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
-import { getUserNotifications, markAsRead, markAsUnread, markAllAsRead } from "../../services/notificationService";
-import { FiBell, FiSearch, FiUser, FiSettings, FiLogOut } from "react-icons/fi";
+import {
+  getUserNotifications,
+  markAsRead,
+  markAsUnread,
+  markAllAsRead,
+  deleteNotification,
+} from "../../services/notificationService";
+import { getNotificationTargetPath } from "../../lib/notificationNavigation";
+import {
+  FiBell,
+  FiSearch,
+  FiUser,
+  FiSettings,
+  FiLogOut,
+  FiTrash2,
+  FiCheck,
+  FiRotateCcw,
+} from "react-icons/fi";
+import { DeleteNotificationDialog } from "../notifications/DeleteNotificationDialog";
 
 /* ─── Notification Dropdown ──────────────────────────────── */
 function HomeNotificationDropdown({ email }) {
@@ -14,6 +31,8 @@ function HomeNotificationDropdown({ email }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
 
@@ -61,6 +80,28 @@ function HomeNotificationDropdown({ email }) {
     } catch {}
   };
 
+  const requestDelete = (notif, e) => {
+    e.stopPropagation();
+    setDeleteTarget({
+      id: notif._id,
+      title: notif.title || notif.type?.replace(/_/g, " ") || "Notification",
+      snippet: notif.message || "",
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleteBusy(true);
+    try {
+      await deleteNotification(deleteTarget.id);
+      setNotifications((prev) => prev.filter((n) => n._id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const handleMarkAll = async () => {
     if (!email || unreadCount === 0 || markingAll) return;
     setMarkingAll(true);
@@ -72,86 +113,381 @@ function HomeNotificationDropdown({ email }) {
     }
   };
 
+  const openNotification = async (notif) => {
+    const path = getNotificationTargetPath(notif);
+    if (!path) return;
+    if (!notif.isRead) {
+      try {
+        await markAsRead(notif._id);
+        setNotifications((prev) => prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n)));
+      } catch {}
+    }
+    setOpen(false);
+    navigate(path);
+  };
+
   return (
     <div style={{ position: "relative", zIndex: 10 }} ref={ref}>
+      <DeleteNotificationDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        notificationTitle={deleteTarget?.title}
+        notificationSnippet={deleteTarget?.snippet}
+        onConfirm={confirmDelete}
+        isDeleting={deleteBusy}
+      />
       <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((p) => !p)}
         style={{
-          background: "none", border: "none", cursor: "pointer",
-          color: "var(--color-muted-foreground)", fontSize: "1.1rem",
-          padding: "0.38rem", borderRadius: "7px", transition: "all 0.18s",
-          position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
+          background: open ? "var(--color-muted)" : "none",
+          border: "none",
+          cursor: "pointer",
+          color: "var(--color-muted-foreground)",
+          fontSize: "1.1rem",
+          padding: "0.45rem",
+          borderRadius: "10px",
+          transition: "all 0.18s",
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: open ? "inset 0 0 0 1px var(--color-border)" : "none",
         }}
-        onMouseOver={(e) => { e.currentTarget.style.background = "var(--color-muted)"; e.currentTarget.style.color = "var(--color-deepNavy)"; }}
-        onMouseOut={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--color-muted-foreground)"; }}
+        onMouseOver={(e) => {
+          if (!open) {
+            e.currentTarget.style.background = "var(--color-muted)";
+            e.currentTarget.style.color = "var(--color-deepNavy)";
+          }
+        }}
+        onMouseOut={(e) => {
+          if (!open) {
+            e.currentTarget.style.background = "none";
+            e.currentTarget.style.color = "var(--color-muted-foreground)";
+          }
+        }}
       >
         <FiBell size={20} />
         {unreadCount > 0 && (
-          <span style={{
-            position: "absolute", top: 4, right: 4,
-            width: 8, height: 8, borderRadius: "50%", background: "var(--color-destructive)",
-            border: "2px solid var(--color-coolSilver)"
-          }} />
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              right: 2,
+              minWidth: 16,
+              height: 16,
+              padding: "0 4px",
+              borderRadius: "999px",
+              background: "var(--color-destructive)",
+              color: "#fff",
+              fontSize: "0.65rem",
+              fontWeight: 800,
+              lineHeight: "16px",
+              textAlign: "center",
+              border: "2px solid var(--color-coolSilver)",
+            }}
+          >
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
         )}
       </button>
 
       {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 8px)", right: -10,
-          width: 340, background: "var(--color-card)", border: "1px solid var(--color-border)",
-          borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
-          overflow: "hidden", animation: "fadeSlideUp 0.18s ease both",
-          display: "flex", flexDirection: "column", maxHeight: 420,
-        }}>
-          <div style={{ padding: "0.9rem 1rem", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ fontWeight: 800, color: "var(--color-deepNavy)", fontSize: "0.9rem", margin: 0 }}>
-              Notifications {unreadCount > 0 && <span style={{ background: "rgba(239,68,68,0.1)", color: "var(--color-destructive)", padding: "0.15rem 0.5rem", borderRadius: "99px", fontSize: "0.7rem", marginLeft: "0.4rem" }}>{unreadCount} new</span>}
-            </h3>
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 10px)",
+            right: -8,
+            width: 384,
+            background: "var(--color-card)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "16px",
+            boxShadow: "0 20px 50px rgba(15,23,42,0.12), 0 0 0 1px rgba(249,191,59,0.12)",
+            overflow: "hidden",
+            animation: "fadeSlideUp 0.18s ease both",
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: 440,
+          }}
+        >
+          <div
+            style={{
+              padding: "0.85rem 1rem",
+              borderBottom: "1px solid var(--color-border)",
+              background: "linear-gradient(135deg, rgba(249,191,59,0.08) 0%, transparent 55%)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
+              <div>
+                <h3 style={{ fontWeight: 800, color: "var(--color-deepNavy)", fontSize: "0.95rem", margin: 0, letterSpacing: "-0.02em" }}>
+                  Notifications
+                </h3>
+                <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "var(--color-muted-foreground)" }}>
+                  Updates on your questions and activity
+                </p>
+              </div>
+              {unreadCount > 0 ? (
+                <span
+                  style={{
+                    background: "rgba(239,68,68,0.1)",
+                    color: "var(--color-destructive)",
+                    padding: "0.2rem 0.5rem",
+                    borderRadius: "99px",
+                    fontSize: "0.65rem",
+                    fontWeight: 800,
+                    whiteSpace: "nowrap",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                  }}
+                >
+                  {unreadCount} new
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    color: "var(--color-muted-foreground)",
+                    background: "var(--color-muted)",
+                    padding: "0.2rem 0.5rem",
+                    borderRadius: "99px",
+                  }}
+                >
+                  All read
+                </span>
+              )}
+            </div>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAll} disabled={markingAll} style={{ background: "none", border: "none", color: "var(--color-azureBlue)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
-                {markingAll ? "Marking..." : "Mark all read"}
+              <button
+                type="button"
+                onClick={handleMarkAll}
+                disabled={markingAll}
+                style={{
+                  marginTop: "0.65rem",
+                  width: "100%",
+                  border: "1px solid rgba(0,145,255,0.25)",
+                  background: "rgba(0,145,255,0.06)",
+                  color: "var(--color-azureBlue)",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  cursor: markingAll ? "wait" : "pointer",
+                  padding: "0.45rem 0.6rem",
+                  borderRadius: "10px",
+                  opacity: markingAll ? 0.7 : 1,
+                }}
+              >
+                {markingAll ? "Marking…" : "Mark all as read"}
               </button>
             )}
           </div>
 
           <div style={{ overflowY: "auto", flex: 1 }} className="custom-scrollbar">
             {loading ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>Loading...</div>
+              <div style={{ padding: "2.25rem", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>
+                Loading notifications…
+              </div>
             ) : notifications.length === 0 ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>No notifications right now</div>
+              <div style={{ padding: "2.25rem 1.25rem", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>
+                <p style={{ fontWeight: 700, color: "var(--color-deepNavy)", margin: "0 0 0.35rem" }}>You’re all caught up</p>
+                <p style={{ margin: 0, fontSize: "0.78rem" }}>No notifications yet.</p>
+              </div>
             ) : (
-              notifications.map((notif) => (
-                <div key={notif._id} style={{
-                  padding: "0.85rem 1rem", borderBottom: "1px solid var(--color-border)",
-                  background: notif.isRead ? "transparent" : "rgba(0,145,255,0.05)",
-                  display: "flex", gap: "0.75rem", transition: "background 0.15s",
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ color: notif.isRead ? "var(--color-muted-foreground)" : "var(--color-deepNavy)", fontSize: "0.85rem", fontWeight: notif.isRead ? 500 : 700, margin: 0 }}>
-                      {notif.title || notif.type?.replace(/_/g, " ") || "Notification"}
-                    </p>
-                    <p style={{ color: "var(--color-muted-foreground)", fontSize: "0.75rem", margin: "0.2rem 0", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                      {notif.message}
-                    </p>
-                    <p style={{ color: "var(--color-muted-foreground)", opacity: 0.7, fontSize: "0.7rem", margin: 0 }}>
-                      {new Date(notif.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    {!notif.isRead ? (
-                      <button onClick={(e) => handleMarkAsRead(notif._id, e)} title="Mark as read" style={{ background: "none", border: "none", color: "var(--color-azureBlue)", cursor: "pointer", fontSize: "1rem" }}>✓</button>
-                    ) : (
-                      <button onClick={(e) => handleMarkAsUnread(notif._id, e)} title="Mark as unread" style={{ background: "none", border: "none", color: "var(--color-muted-foreground)", opacity: 0.5, cursor: "pointer", fontSize: "1rem" }}>•</button>
+              notifications.map((notif) => {
+                const targetPath = getNotificationTargetPath(notif);
+                return (
+                  <div
+                    key={notif._id}
+                    role={targetPath ? "button" : undefined}
+                    tabIndex={targetPath ? 0 : undefined}
+                    onClick={() => targetPath && openNotification(notif)}
+                    onKeyDown={(e) => {
+                      if (!targetPath) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openNotification(notif);
+                      }
+                    }}
+                    style={{
+                      position: "relative",
+                      padding: "0.9rem 1rem 0.9rem 0.85rem",
+                      borderBottom: "1px solid var(--color-border)",
+                      background: notif.isRead ? "transparent" : "rgba(0,145,255,0.06)",
+                      display: "flex",
+                      gap: "0.65rem",
+                      alignItems: "stretch",
+                      transition: "background 0.15s",
+                      cursor: targetPath ? "pointer" : "default",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = notif.isRead ? "var(--color-muted)" : "rgba(0,145,255,0.09)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = notif.isRead ? "transparent" : "rgba(0,145,255,0.06)";
+                    }}
+                  >
+                    {!notif.isRead && (
+                      <span
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          width: 3,
+                          height: 28,
+                          borderRadius: "0 4px 4px 0",
+                          background: "var(--color-amberGold, #f9bf3b)",
+                        }}
+                      />
                     )}
+                 <div style={{ flex: 1, minWidth: 0, paddingLeft: notif.isRead ? 0 : 6 }}>
+                      <p
+                        style={{
+                          color: notif.isRead ? "var(--color-muted-foreground)" : "var(--color-deepNavy)",
+                          fontSize: "0.84rem",
+                          fontWeight: notif.isRead ? 600 : 800,
+                          margin: 0,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {notif.title || notif.type?.replace(/_/g, " ") || "Notification"}
+                      </p>
+                      <p
+                        style={{
+                          color: "var(--color-muted-foreground)",
+                          fontSize: "0.74rem",
+                          margin: "0.25rem 0 0",
+                          lineHeight: 1.45,
+                          overflow: "hidden",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                        }}
+                      >
+                        {notif.message}
+                      </p>
+                      <p
+                        style={{
+                          color: "var(--color-muted-foreground)",
+                          opacity: 0.75,
+                          fontSize: "0.68rem",
+                          margin: "0.35rem 0 0",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {new Date(notif.createdAt).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      {!notif.isRead ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleMarkAsRead(notif._id, e)}
+                          title="Mark as read"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 32,
+                            height: 32,
+                            borderRadius: 10,
+                            border: "1px solid rgba(0,145,255,0.25)",
+                            background: "rgba(0,145,255,0.08)",
+                            color: "var(--color-azureBlue)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <FiCheck size={16} strokeWidth={2.5} />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => handleMarkAsUnread(notif._id, e)}
+                          title="Mark as unread"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 32,
+                            height: 32,
+                            borderRadius: 10,
+                            border: "1px solid var(--color-border)",
+                            background: "var(--color-muted)",
+                            color: "var(--color-muted-foreground)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <FiRotateCcw size={14} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => requestDelete(notif, e)}
+                        title="Delete"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 32,
+                          height: 32,
+                          borderRadius: 10,
+                          border: "1px solid rgba(239,68,68,0.25)",
+                          background: "rgba(239,68,68,0.06)",
+                          color: "var(--color-destructive)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <FiTrash2 size={15} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
-          <div style={{ padding: "0.6rem", borderTop: "1px solid var(--color-border)", textAlign: "center" }}>
-            <button onClick={() => { setOpen(false); navigate("/home/notifications"); }} style={{ background: "none", border: "none", color: "var(--color-azureBlue)", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
-              View all
+          <div
+            style={{
+              padding: "0.65rem 1rem",
+              borderTop: "1px solid var(--color-border)",
+              background: "linear-gradient(180deg, transparent, rgba(15,23,42,0.02))",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                navigate("/home/notifications");
+              }}
+              style={{
+                width: "100%",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-muted)",
+                color: "var(--color-deepNavy)",
+                fontSize: "0.8rem",
+                fontWeight: 800,
+                cursor: "pointer",
+                padding: "0.55rem 0.75rem",
+                borderRadius: "12px",
+              }}
+            >
+              View all notifications
             </button>
           </div>
         </div>

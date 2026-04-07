@@ -39,7 +39,7 @@ export function Settings() {
         </p>
         <div className="flex flex-col gap-3">
           <button
-            onClick={() => navigate("/user/profile")}
+            onClick={() => navigate("/dashboard/user/profile")}
             className="flex items-center gap-3 w-full text-left rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-5 py-4 text-sm font-semibold text-[#334155] transition hover:bg-[#f1f5f9]"
           >
             <span className="text-lg">👤</span> Edit Profile

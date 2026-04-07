@@ -8,6 +8,7 @@ import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { NotificationList } from "../../../components/admin/Notifications/NotificationList"
 import { NotificationDialog } from "../../../components/admin/Notifications/NotificationDialog"
+import { DeleteNotificationDialog } from "../../../components/notifications/DeleteNotificationDialog"
 import { 
   getNotifications, 
   getUserNotifications,
@@ -44,6 +45,8 @@ export function Notifications() {
   const [sending, setSending] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
   const [formErrors, setFormErrors] = useState({})
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -242,20 +245,40 @@ export function Notifications() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this notification?")) return
+  const requestDelete = (notif) => {
+    setDeleteTarget({
+      id: notif._id,
+      title: notif.title || notif.type?.replace(/_/g, " ") || "Notification",
+      snippet: notif.message || "",
+    })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return
+    setDeleteBusy(true)
     try {
-      await deleteNotification(id)
-      setNotifications(notifications.filter(n => n._id !== id))
-      setTotal(t => t - 1)
+      await deleteNotification(deleteTarget.id)
+      setNotifications((prev) => prev.filter((n) => n._id !== deleteTarget.id))
+      setTotal((t) => Math.max(0, t - 1))
+      setDeleteTarget(null)
       toast.success("Notification deleted")
     } catch {
       toast.error("Failed to delete notification")
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+      <DeleteNotificationDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        notificationTitle={deleteTarget?.title}
+        notificationSnippet={deleteTarget?.snippet}
+        onConfirm={confirmDelete}
+        isDeleting={deleteBusy}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border shadow-sm">
         <div>
@@ -389,7 +412,7 @@ export function Notifications() {
           notifications={notifications} 
           onMarkAsRead={handleMarkAsRead} 
           onMarkAsUnread={handleMarkAsUnread}
-          onDelete={handleDelete} 
+          onDelete={requestDelete} 
         />
       )}
 

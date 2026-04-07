@@ -1,13 +1,31 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, Routes, Route, Navigate } from "react-router-dom";
+import { getNotificationTargetPath } from "../../lib/notificationNavigation";
 import { useAuth } from "../../context/AuthContext";
 import { qaApi } from "../../services/qa.api";
 import { API_ORIGIN } from "../../lib/api";
-import { getUserNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
+import {
+  getUserNotifications,
+  markAsRead,
+  markAsUnread,
+  markAllAsRead,
+  deleteNotification,
+} from "../../services/notificationService";
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
 import HomeHeader from "../../components/home/HomeHeader";
 import HomeSidebar from "../../components/home/HomeSidebar";
-import { FiAlertTriangle, FiSearch, FiInbox, FiAlertCircle, FiBell, FiUsers, FiHelpCircle, FiCheckCircle } from "react-icons/fi";
+import { DeleteNotificationDialog } from "../../components/notifications/DeleteNotificationDialog";
+import {
+  FiAlertTriangle,
+  FiSearch,
+  FiInbox,
+  FiAlertCircle,
+  FiBell,
+  FiUsers,
+  FiHelpCircle,
+  FiCheckCircle,
+  FiTrash2,
+} from "react-icons/fi";
 import { BsLightbulb } from "react-icons/bs";
 import { ImageDropZone } from "../../components/ImageDropZone";
 
@@ -476,9 +494,12 @@ function AskQuestion() {
 /* ─── Notifications Page ─────────────────────────────────── */
 function NotificationsFeed() {
   const { auth } = useAuth();
+  const navigate = useNavigate();
   const email = auth?.user?.email;
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!email) return;
@@ -512,14 +533,100 @@ function NotificationsFeed() {
     } catch {}
   };
 
+  const markUnread = async (id) => {
+    try {
+      await markAsUnread(id);
+      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: false } : n));
+    } catch {}
+  };
+
+  const requestDeleteNotif = (n) => {
+    setDeleteTarget({
+      id: n._id,
+      title: n.title || n.type?.replace(/_/g, " ") || "Notification",
+      snippet: n.message || "",
+    });
+  };
+
+  const confirmDeleteNotif = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleteBusy(true);
+    try {
+      await deleteNotification(deleteTarget.id);
+      setNotifications((prev) => prev.filter((x) => x._id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const onNotificationClick = async (n) => {
+    const path = getNotificationTargetPath(n);
+    if (path) {
+      if (!n.isRead) await markRead(n._id);
+      navigate(path);
+      return;
+    }
+    if (!n.isRead) await markRead(n._id);
+  };
+
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div
+      style={{
+        maxWidth: 720,
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        borderRadius: "16px",
+        boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
+        padding: "1.25rem 1.5rem 1.5rem",
+      }}
+    >
+      <DeleteNotificationDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        notificationTitle={deleteTarget?.title}
+        notificationSnippet={deleteTarget?.snippet}
+        onConfirm={confirmDeleteNotif}
+        isDeleting={deleteBusy}
+      />
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-        <h1 style={{ fontWeight: 800, fontSize: "1.4rem", color: "#0f172a", margin: 0 }}>Your Notifications</h1>
-        {notifications.some(n => !n.isRead) && (
-          <button onClick={handleMarkAll} style={{ background: "none", border: "none", color: "#3b82f6", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }} onMouseOver={e=>e.currentTarget.style.background="rgba(59,130,246,0.1)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
-            Mark all as read
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "1rem",
+          marginBottom: "1.35rem",
+          paddingBottom: "1rem",
+          borderBottom: "1px solid #f1f5f9",
+        }}
+      >
+        <div>
+          <h1 style={{ fontWeight: 900, fontSize: "1.35rem", color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>
+            Your notifications
+          </h1>
+          <p style={{ margin: "0.35rem 0 0", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.45 }}>
+            Open an item to go to the activity. Mark read or remove what you don’t need.
+          </p>
+        </div>
+        {notifications.some((n) => !n.isRead) && (
+          <button
+            type="button"
+            onClick={handleMarkAll}
+            style={{
+              border: "1px solid #bfdbfe",
+              background: "#eff6ff",
+              color: "#2563eb",
+              fontWeight: 800,
+              cursor: "pointer",
+              fontSize: "0.78rem",
+              padding: "0.45rem 0.75rem",
+              borderRadius: "10px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Mark all read
           </button>
         )}
       </div>
@@ -534,10 +641,23 @@ function NotificationsFeed() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {notifications.map((n) => (
-             <div key={n._id} onClick={() => markRead(n._id)} style={{
+          {notifications.map((n) => {
+            const path = getNotificationTargetPath(n);
+            return (
+             <div
+               key={n._id}
+               role="button"
+               tabIndex={0}
+               onClick={() => onNotificationClick(n)}
+               onKeyDown={(e) => {
+                 if (e.key === "Enter" || e.key === " ") {
+                   e.preventDefault();
+                   onNotificationClick(n);
+                 }
+               }}
+               style={{
                background: "#fff", border: `1px solid ${n.isRead ? "#e2e8f0" : "#bfdbfe"}`,
-               borderRadius: "12px", padding: "1.25rem", cursor: n.isRead ? "default" : "pointer",
+               borderRadius: "12px", padding: "1.25rem", cursor: path || !n.isRead ? "pointer" : "default",
                boxShadow: n.isRead ? "0 1px 3px rgba(0,0,0,0.02)" : "0 4px 12px rgba(59,130,246,0.1)",
                transition: "all 0.2s", display: "flex", gap: "1rem", alignItems: "flex-start",
              }}>
@@ -560,10 +680,78 @@ function NotificationsFeed() {
                   <p style={{ color: n.isRead ? "#94a3b8" : "#475569", fontSize: "0.875rem", margin: 0, lineHeight: 1.5 }}>
                     {n.message}
                   </p>
+                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.65rem" }}>
+                    {!n.isRead ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markRead(n._id);
+                        }}
+                        style={{
+                          border: "1px solid #bfdbfe",
+                          background: "#eff6ff",
+                          color: "#2563eb",
+                          fontWeight: 700,
+                          fontSize: "0.75rem",
+                          padding: "0.25rem 0.55rem",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Mark read
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markUnread(n._id);
+                        }}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontWeight: 700,
+                          fontSize: "0.75rem",
+                          padding: "0.25rem 0.55rem",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Mark unread
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        requestDeleteNotif(n);
+                      }}
+                      style={{
+                        border: "1px solid rgba(239,68,68,0.25)",
+                        background: "rgba(239,68,68,0.08)",
+                        color: "#ef4444",
+                        fontWeight: 800,
+                        fontSize: "0.75rem",
+                        padding: "0.25rem 0.55rem",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                      }}
+                      title="Delete"
+                    >
+                      <FiTrash2 size={14} />
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 {!n.isRead && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", marginTop: "0.4rem", flexShrink: 0 }} />}
              </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

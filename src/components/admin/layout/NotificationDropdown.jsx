@@ -1,19 +1,30 @@
-import { Bell, Check, CheckCheck, Info } from "lucide-react"
+import { Bell, Check, CheckCheck, Info, RotateCcw, Trash2 } from "lucide-react"
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { useAuth } from "../../../context/AuthContext"
 import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
-import { getUserNotifications, markAsRead, markAllAsRead } from "../../../services/notificationService"
+import {
+  getUserNotifications,
+  markAsRead,
+  markAsUnread,
+  markAllAsRead,
+  deleteNotification,
+} from "../../../services/notificationService"
+import { getNotificationTargetPath } from "../../../lib/notificationNavigation"
+import { DeleteNotificationDialog } from "../../notifications/DeleteNotificationDialog"
 
 export function NotificationDropdown() {
   const { auth } = useAuth()
+  const navigate = useNavigate()
   const adminEmail = auth?.user?.email ?? null
 
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [markingAll, setMarkingAll] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const dropdownRef = useRef(null)
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications])
@@ -65,6 +76,46 @@ export function NotificationDropdown() {
     }
   }
 
+  const handleMarkAsUnread = async (id) => {
+    try {
+      await markAsUnread(id)
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: false } : n)))
+    } catch {
+      toast.error("Failed to mark as unread")
+    }
+  }
+
+  const requestDelete = (notif) => {
+    setDeleteTarget({
+      id: notif._id,
+      title: notif.title || notif.type?.replace(/_/g, " ") || "Notification",
+      snippet: notif.message || "",
+    })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return
+    setDeleteBusy(true)
+    try {
+      await deleteNotification(deleteTarget.id)
+      setNotifications((prev) => prev.filter((n) => n._id !== deleteTarget.id))
+      setDeleteTarget(null)
+      toast.success("Notification deleted")
+    } catch {
+      toast.error("Failed to delete notification")
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
+  const openNotification = async (notif) => {
+    const path = getNotificationTargetPath(notif)
+    if (!path) return
+    if (!notif.isRead) await handleMarkAsRead(notif._id)
+    setShowNotifications(false)
+    navigate(path)
+  }
+
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0 || markingAll || !adminEmail) return
     setMarkingAll(true)
@@ -81,6 +132,14 @@ export function NotificationDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
+      <DeleteNotificationDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        notificationTitle={deleteTarget?.title}
+        notificationSnippet={deleteTarget?.snippet}
+        onConfirm={confirmDelete}
+        isDeleting={deleteBusy}
+      />
       {/* Bell button */}
       <button
         onClick={() => setShowNotifications(!showNotifications)}
@@ -110,28 +169,41 @@ export function NotificationDropdown() {
 
       {showNotifications && (
         <div
-          className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl bg-white py-2 shadow-2xl focus:outline-none z-[100]"
+          className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl bg-white py-0 shadow-2xl focus:outline-none z-[100] overflow-hidden"
           style={{
             border: "1px solid #e2e8f0",
             borderTop: "3px solid #f9bf3b",
-            boxShadow: "0 16px 48px rgba(0,32,91,0.18)",
+            boxShadow: "0 20px 56px rgba(0,32,91,0.2)",
             animation: "fadeSlideUp 0.18s ease both",
           }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100"
-            style={{ background: "linear-gradient(135deg, rgba(0,32,91,0.03) 0%, transparent 100%)" }}
+            className="flex flex-col gap-2 px-4 py-3 border-b border-gray-100"
+            style={{ background: "linear-gradient(135deg, rgba(0,32,91,0.05) 0%, transparent 100%)" }}
           >
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: "#f9bf3b" }} />
-              <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
-              {unreadCount > 0 && (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: "#f9bf3b" }} />
+                  <h3 className="text-sm font-bold text-gray-900 leading-tight">Notifications</h3>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1 pl-3.5 leading-snug">
+                  Your alerts and system messages
+                </p>
+              </div>
+              {unreadCount > 0 ? (
                 <span
-                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide"
+                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide shrink-0"
                   style={{ background: "rgba(249,191,59,0.15)", color: "#b45309", border: "1px solid rgba(249,191,59,0.3)" }}
                 >
                   {unreadCount} new
+                </span>
+              ) : (
+                <span
+                  className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0"
+                >
+                  All read
                 </span>
               )}
             </div>
@@ -139,13 +211,13 @@ export function NotificationDropdown() {
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={markingAll}
-                className="flex items-center gap-1 text-xs font-semibold disabled:opacity-50 transition-colors px-2.5 py-1 rounded-lg"
-                style={{ color: "#b45309", background: "rgba(249,191,59,0.1)" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.18)" }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(249,191,59,0.1)" }}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold disabled:opacity-50 transition-colors px-2.5 py-2 rounded-xl"
+                style={{ color: "#b45309", background: "rgba(249,191,59,0.12)", border: "1px solid rgba(249,191,59,0.25)" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.2)" }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(249,191,59,0.12)" }}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                {markingAll ? "Marking…" : "Mark all read"}
+                {markingAll ? "Marking…" : "Mark all as read"}
               </button>
             )}
           </div>
@@ -165,17 +237,29 @@ export function NotificationDropdown() {
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notifications.slice(0, 10).map((notif) => (
+                {notifications.slice(0, 10).map((notif) => {
+                  const path = getNotificationTargetPath(notif)
+                  return (
                   <div
                     key={notif._id}
-                    className="relative flex items-start px-4 py-3 transition-colors cursor-default"
+                    role={path ? "button" : undefined}
+                    tabIndex={path ? 0 : undefined}
+                    onClick={() => path && openNotification(notif)}
+                    onKeyDown={(e) => {
+                      if (!path) return
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        openNotification(notif)
+                      }
+                    }}
+                    className="relative flex items-start gap-2 px-4 py-3.5 transition-colors"
                     style={
                       !notif.isRead
-                        ? { background: "rgba(249,191,59,0.05)" }
-                        : {}
+                        ? { background: "rgba(249,191,59,0.06)", cursor: path ? "pointer" : "default" }
+                        : { cursor: path ? "pointer" : "default" }
                     }
-                    onMouseEnter={e => { e.currentTarget.style.background = !notif.isRead ? "rgba(249,191,59,0.09)" : "#f8fafc" }}
-                    onMouseLeave={e => { e.currentTarget.style.background = !notif.isRead ? "rgba(249,191,59,0.05)" : "" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = !notif.isRead ? "rgba(249,191,59,0.1)" : "#f8fafc" }}
+                    onMouseLeave={e => { e.currentTarget.style.background = !notif.isRead ? "rgba(249,191,59,0.06)" : "" }}
                   >
                     {/* Unread indicator bar */}
                     {!notif.isRead && (
@@ -199,20 +283,47 @@ export function NotificationDropdown() {
                         )}
                       </p>
                     </div>
-                    {!notif.isRead && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
-                        className="flex-shrink-0 ml-2 rounded-lg p-1.5 transition-colors"
-                        style={{ color: "#b45309" }}
+                    <div className="flex flex-col gap-1 flex-shrink-0 ml-1">
+                      {!notif.isRead ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id) }}
+                        className="rounded-lg p-1.5 transition-colors h-8 w-8 inline-flex items-center justify-center"
+                        style={{ color: "#b45309", border: "1px solid rgba(249,191,59,0.35)" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(249,191,59,0.15)" }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
                         title="Mark as read"
                       >
-                        <Check className="h-3.5 w-3.5" />
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsUnread(notif._id) }}
+                        className="rounded-lg p-1.5 transition-colors h-8 w-8 inline-flex items-center justify-center"
+                        style={{ color: "#64748b", border: "1px solid #e2e8f0" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9" }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                        title="Mark as unread"
+                      >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); requestDelete(notif) }}
+                        className="rounded-lg p-1.5 transition-colors h-8 w-8 inline-flex items-center justify-center"
+                        style={{ color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)" }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                    )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -117,7 +117,7 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => onDelete(notif._id)} 
+                onClick={() => onDelete(notif)} 
                 title="Delete Notification"
                 className="h-8 w-full justify-start text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-opacity"
               >

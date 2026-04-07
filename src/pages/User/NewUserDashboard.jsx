@@ -11,10 +11,12 @@ import {
   ChevronLeft,
   MoreHorizontal,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { UserDashboardShell } from "../../components/user/UserDashboardShell";
+import { Notifications } from "./Notifications/Notifications";
+import { Settings as UserSettingsPanel } from "../user/Settings/Settings";
 
 /** Fallback when API is unavailable; same shape as GET /user-dashboard/me/recent-answers */
 const DUMMY_RECENT_ANSWERS = [
@@ -74,6 +76,10 @@ const DUMMY_RECENT_ANSWERS = [
 ];
 
 const DashboardPage = () => {
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab");
+  const notificationsTab = tab === "notifications";
+  const settingsTab = tab === "settings";
   const { auth } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -149,22 +155,22 @@ const DashboardPage = () => {
       title: "Reputation points",
       value: dashboardData.stats.reputationPoints,
       growth: "Live score",
-      icon: <Users size={34} className="text-blue-600" />,
-      bg: "bg-blue-100",
+      icon: <Users size={34} className="text-azureBlue" />,
+      bg: "bg-azureBlue/15",
     },
     {
       title: "My Questions",
       value: dashboardData.stats.myQuestions,
       growth: "Live count",
-      icon: <HelpCircle size={34} className="text-purple-600" />,
-      bg: "bg-purple-100",
+      icon: <HelpCircle size={34} className="text-amberGold" />,
+      bg: "bg-amberGold/20",
     },
     {
       title: "My Answer",
       value: dashboardData.stats.myAnswers,
       growth: "Live count",
-      icon: <Monitor size={34} className="text-emerald-600" />,
-      bg: "bg-emerald-100",
+      icon: <Monitor size={34} className="text-deepNavy" />,
+      bg: "bg-deepNavy/10",
     },
   ];
 
@@ -196,45 +202,56 @@ const DashboardPage = () => {
 
   return (
     <UserDashboardShell>
+      {notificationsTab ? (
+        <Notifications />
+      ) : settingsTab ? (
+        <UserSettingsPanel />
+      ) : (
+        <>
           {/* Top Bar */}
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-[28px] font-bold text-[#1f2937]">
-              Hello {dashboardData.profile?.firstName || auth?.user?.name || "User"}{" "}
+            <h2 className="text-[28px] font-bold text-richBlack">
+              <span className="text-deepNavy">Hello</span>{" "}
+              {dashboardData.profile?.firstName || auth?.user?.name || "User"}{" "}
               <span className="text-2xl">👋🏻</span>
             </h2>
 
-            <div className="flex h-14 w-[270px] items-center gap-3 rounded-2xl bg-white px-4 shadow-sm">
-              <Search size={20} className="text-gray-400" />
+            <div className="flex h-14 w-[270px] items-center gap-3 rounded-2xl border border-border bg-card px-4 shadow-soft">
+              <Search size={20} className="text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-full bg-transparent text-[15px] outline-none placeholder:text-gray-400"
+                className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
           {/* Stats */}
-          {loading && <p className="mb-6 text-sm font-medium text-[#334155]">Loading dashboard...</p>}
-          {error && <p className="mb-6 text-sm font-medium text-red-600">{error}</p>}
+          {loading && <p className="mb-6 text-sm font-medium text-muted-foreground">Loading dashboard...</p>}
+          {error && <p className="mb-6 text-sm font-medium text-destructive">{error}</p>}
           <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
             {stats.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between rounded-[28px] bg-white px-6 py-7 shadow-sm"
+                className="flex items-center justify-between rounded-[28px] border border-border/80 bg-card px-6 py-7 shadow-card"
               >
                 <div className="flex items-center gap-5">
                   <div
-                    className={`flex h-20 w-20 items-center justify-center rounded-full ${item.bg}`}
+                    className={`flex h-20 w-20 items-center justify-center rounded-full ring-2 ring-white ${item.bg}`}
                   >
                     {item.icon}
                   </div>
 
                   <div>
-                    <p className="text-lg font-medium text-gray-400">
+                    <p className="text-lg font-medium text-muted-foreground">
                       {item.title}
                     </p>
-                    <h3 className="mt-1 text-5xl font-bold text-[#20263a]">{item.value}</h3>
-                    <p className="mt-2 text-base font-semibold text-emerald-500">
+                    <h3 className="mt-1 text-5xl font-bold text-richBlack">{item.value}</h3>
+                    <p
+                      className={`mt-2 text-base font-semibold ${
+                        index === 1 ? "text-amberGold" : "text-azureBlue"
+                      }`}
+                    >
                       ↑ <span className="font-bold">{item.growth}</span>
                     </p>
                   </div>
@@ -242,11 +259,11 @@ const DashboardPage = () => {
 
                 {index === 2 && (
                   <div className="hidden flex-col items-end justify-between xl:flex">
-                    <div className="h-16 w-28 rounded-xl bg-gradient-to-br from-emerald-50 to-white p-2">
-                      <svg viewBox="0 0 100 40" className="h-full w-full">
+                    <div className="h-16 w-28 rounded-xl bg-gradient-to-br from-amberGold/15 via-coolSilver to-card p-2 ring-1 ring-amberGold/25">
+                      <svg viewBox="0 0 100 40" className="h-full w-full text-azureBlue">
                         <polyline
                           fill="none"
-                          stroke="#34d399"
+                          stroke="currentColor"
                           strokeWidth="3"
                           points="5,30 20,18 32,30 48,10 62,24 78,6 92,12"
                         />
@@ -286,15 +303,16 @@ const DashboardPage = () => {
           </div>
 
           {/* Recent Answers */}
-          <div className="rounded-[30px] bg-white p-8 shadow-sm">
+          <div className="rounded-[30px] border border-border/80 bg-card p-8 shadow-card">
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h3 className="text-[24px] font-bold text-[#20263a]">Recent Answers</h3>
+              <div className="border-l-4 border-amberGold pl-4">
+                <h3 className="text-[24px] font-bold text-richBlack">Recent Answers</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Your latest activity on the forum</p>
               </div>
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                <div className="flex h-14 min-w-[220px] items-center gap-3 rounded-2xl bg-[#f7f7fb] px-4">
-                  <Search size={20} className="text-gray-400" />
+                <div className="flex h-14 min-w-[220px] items-center gap-3 rounded-2xl border border-border bg-muted px-4">
+                  <Search size={20} className="text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search questions or answers..."
@@ -303,33 +321,33 @@ const DashboardPage = () => {
                       setAnswersSearch(e.target.value);
                       setAnswersPage(1);
                     }}
-                    className="w-full bg-transparent text-[15px] outline-none placeholder:text-gray-400"
+                    className="w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
 
-                <div className="flex h-14 items-center gap-2 rounded-2xl bg-[#f7f7fb] px-4">
-                  <span className="text-sm font-semibold text-[#6b7280]">Best answer</span>
+                <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-muted px-4">
+                  <span className="text-sm font-semibold text-muted-foreground">Best answer</span>
                   <select
                     value={bestAnswerFilter}
                     onChange={(e) => {
                       setBestAnswerFilter(e.target.value);
                       setAnswersPage(1);
                     }}
-                    className="rounded-lg border-0 bg-transparent text-[15px] font-semibold text-[#30384f] outline-none"
+                    className="rounded-lg border-0 bg-transparent text-[15px] font-semibold text-richBlack outline-none"
                   >
                     <option value="all">All</option>
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
                   </select>
-                  <ChevronDown size={18} className="text-[#6b7280]" />
+                  <ChevronDown size={18} className="text-muted-foreground" />
                 </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-[#edf0f6]">
+            <div className="overflow-x-auto rounded-2xl border border-border">
               <table className="w-full min-w-[900px] border-collapse">
                 <thead>
-                  <tr className="bg-[#f1f5f9] text-left text-[#64748b]">
+                  <tr className="bg-muted text-left text-muted-foreground">
                     <th className="px-6 py-4 text-sm font-semibold">Question</th>
                     <th className="px-6 py-4 text-sm font-semibold">Answer</th>
                     <th className="px-6 py-4 text-sm font-semibold">Upvotes</th>
@@ -349,39 +367,39 @@ const DashboardPage = () => {
                     return (
                       <tr
                         key={rowKey}
-                        className="border-b border-[#edf0f6] text-[15px] text-[#334155] last:border-b-0"
+                        className="border-b border-border text-[15px] text-foreground/90 last:border-b-0"
                       >
                         <td className="max-w-[220px] px-6 py-5">
                           <Link
                             to={`/questions/${row.questionId}`}
-                            className="font-medium text-[#4f46e5] hover:underline"
+                            className="font-medium text-azureBlue transition hover:text-deepNavy hover:underline"
                           >
                             {row.questionTitle}
                           </Link>
                         </td>
-                        <td className="max-w-[280px] px-6 py-5 text-[#475569]">
+                        <td className="max-w-[280px] px-6 py-5 text-muted-foreground">
                           {row.answerSnippet}
                         </td>
                         <td className="whitespace-nowrap px-6 py-5">
-                          <span className="inline-flex items-center gap-1.5 font-semibold text-[#ca8a04]">
-                            <Star size={18} className="fill-amber-400 text-amber-400" />
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-amberGold">
+                            <Star size={18} className="fill-amberGold text-amberGold" />
                             {row.upvotes ?? 0}
                           </span>
                         </td>
                         <td className="px-6 py-5">
                           {row.isBestAnswer ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
-                              <Check size={16} strokeWidth={3} />
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-azureBlue/12 px-3 py-1 text-sm font-semibold text-deepNavy">
+                              <Check size={16} strokeWidth={3} className="text-azureBlue" />
                               Yes
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-semibold text-muted-foreground">
                               <MoreHorizontal size={16} />
                               No
                             </span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-5 text-[#64748b]">{dateStr}</td>
+                        <td className="whitespace-nowrap px-6 py-5 text-muted-foreground">{dateStr}</td>
                         <td className="px-6 py-5">
                           <button
                             type="button"
@@ -392,7 +410,7 @@ const DashboardPage = () => {
                                 fullAnswer: row.fullAnswer || row.answerSnippet || "",
                               })
                             }
-                            className="rounded-xl bg-[#f9bf3b] px-4 py-2 text-sm font-bold text-[#343e43] transition hover:brightness-95"
+                            className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
                           >
                             View full answer
                           </button>
@@ -402,7 +420,7 @@ const DashboardPage = () => {
                   })}
                   {!paginatedAnswers.length && (
                     <tr>
-                      <td className="px-6 py-8 text-center text-[#64748b]" colSpan={6}>
+                      <td className="px-6 py-8 text-center text-muted-foreground" colSpan={6}>
                         No answers match your search or filter.
                       </td>
                     </tr>
@@ -416,19 +434,19 @@ const DashboardPage = () => {
                 type="button"
                 disabled={answersPage <= 1}
                 onClick={() => setAnswersPage((p) => Math.max(1, p - 1))}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#64748b] disabled:opacity-40"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-azureBlue/40 hover:text-azureBlue disabled:opacity-40"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={20} />
               </button>
-              <span className="flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg bg-[#dbeafe] text-sm font-bold text-[#2563eb]">
+              <span className="flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg bg-azureBlue/12 text-sm font-bold text-azureBlue ring-1 ring-azureBlue/20">
                 {answersPage}
               </span>
               <button
                 type="button"
                 disabled={answersPage >= totalAnswerPages}
                 onClick={() => setAnswersPage((p) => Math.min(totalAnswerPages, p + 1))}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#64748b] disabled:opacity-40"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-azureBlue/40 hover:text-azureBlue disabled:opacity-40"
                 aria-label="Next page"
               >
                 <ChevronRight size={20} />
@@ -438,28 +456,30 @@ const DashboardPage = () => {
 
           {fullAnswerModal.open && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-richBlack/50 p-4 backdrop-blur-[2px]"
               role="dialog"
               aria-modal="true"
               aria-labelledby="full-answer-title"
             >
-              <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-                <h4 id="full-answer-title" className="text-lg font-bold text-[#20263a]">
+              <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-elevated ring-1 ring-deepNavy/10">
+                <h4 id="full-answer-title" className="text-lg font-bold text-richBlack">
                   {fullAnswerModal.questionTitle}
                 </h4>
-                <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-[#475569]">
+                <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">
                   {fullAnswerModal.fullAnswer}
                 </p>
                 <button
                   type="button"
                   onClick={() => setFullAnswerModal((m) => ({ ...m, open: false }))}
-                  className="mt-6 w-full rounded-xl bg-[#f9bf3b] py-3 font-bold text-[#343e43] hover:brightness-95"
+                  className="mt-6 w-full rounded-xl bg-primary py-3 font-bold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
                 >
                   Close
                 </button>
               </div>
             </div>
           )}
+        </>
+      )}
     </UserDashboardShell>
   );
 };
