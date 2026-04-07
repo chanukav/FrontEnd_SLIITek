@@ -13,6 +13,7 @@ export const getNotifications = async (params = {}) => {
     if (params.type && params.type !== 'all')   query.set("type",   params.type);
     if (params.isRead !== undefined && params.isRead !== 'all') query.set("isRead", params.isRead);
     if (params.email)  query.set("email",  params.email);
+    if (params.senderEmail) query.set("senderEmail", params.senderEmail);
 
     const url = query.toString() ? `${API_URL}?${query}` : API_URL;
     const res = await api.get(url);
