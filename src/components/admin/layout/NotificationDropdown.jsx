@@ -5,7 +5,7 @@ import { toast } from "sonner"
 
 import { useAuth } from "../../../context/AuthContext"
 import { useNotificationSSE } from "../../../hooks/useNotificationSSE"
-import { getNotifications, markAsRead, markAllAsRead } from "../../../services/notificationService"
+import { getUserNotifications, markAsRead, markAllAsRead } from "../../../services/notificationService"
 
 export function NotificationDropdown() {
   const { auth } = useAuth()
@@ -20,13 +20,14 @@ export function NotificationDropdown() {
 
   // ── Initial fetch (most-recent 20) ───────────────────────────────────────
   const fetchNotifs = useCallback(async () => {
+    if (!adminEmail) return
     try {
-      const res = await getNotifications({ limit: 20 })
+      const res = await getUserNotifications(adminEmail)
       setNotifications(res.data || [])
     } catch (error) {
       console.error("Failed to fetch notifications:", error)
     }
-  }, [])
+  }, [adminEmail])
 
   useEffect(() => { fetchNotifs() }, [fetchNotifs])
 
@@ -65,11 +66,10 @@ export function NotificationDropdown() {
   }
 
   const handleMarkAllAsRead = async () => {
-    if (unreadCount === 0 || markingAll) return
-    const unreadEmails = [...new Set(notifications.filter(n => !n.isRead).map(n => n.email))]
+    if (unreadCount === 0 || markingAll || !adminEmail) return
     setMarkingAll(true)
     try {
-      await Promise.all(unreadEmails.map(email => markAllAsRead(email)))
+      await markAllAsRead(adminEmail)
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
       toast.success("All notifications marked as read")
     } catch {

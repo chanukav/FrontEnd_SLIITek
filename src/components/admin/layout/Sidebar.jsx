@@ -48,7 +48,7 @@ export function Sidebar({ isOpen, setIsOpen }) {
             className="absolute left-0 top-0 bottom-0 w-[3px]"
             style={{ background: "linear-gradient(180deg, #f9bf3b 0%, rgba(249,191,59,0.2) 100%)" }}
           />
-          <div className="flex items-center pl-1">
+          <Link to="/home" className="flex items-center pl-1 hover:opacity-80 transition-opacity">
             <img
               src="/slitek-logo.webp"
               alt="SLIITek"
@@ -61,7 +61,7 @@ export function Sidebar({ isOpen, setIsOpen }) {
                 filter: "brightness(1.1)",
               }}
             />
-          </div>
+          </Link>
           <button
             className="lg:hidden p-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setIsOpen(false)}

@@ -10,6 +10,7 @@ import { NotificationList } from "../../../components/admin/Notifications/Notifi
 import { NotificationDialog } from "../../../components/admin/Notifications/NotificationDialog"
 import { 
   getNotifications, 
+  getUserNotifications,
   createNotification, 
   markAsRead, 
   markAsUnread,
@@ -55,6 +56,7 @@ export function Notifications() {
   const [filterEmail, setFilterEmail] = useState("")
   const [emailDraft, setEmailDraft] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState("inbox") // "sent", "inbox"
 
   // Form state
   const [newEmail, setNewEmail] = useState("")
@@ -67,26 +69,49 @@ export function Notifications() {
   const fetchNotifications = useCallback(async (currentPage = page) => {
     setLoading(true)
     try {
-      const res = await getNotifications({
-        page: currentPage,
-        limit: PAGE_SIZE,
-        type: filterType,
-        isRead: filterRead,
-        email: filterEmail,
-      })
-      setNotifications(res.data || [])
-      setTotalPages(res.pages || 1)
-      setTotal(res.total || 0)
+      if (viewMode === "inbox") {
+        const res = await getUserNotifications(adminEmail)
+        setNotifications(res.data || [])
+        setTotalPages(1) // getUserNotifications doesn't paginate yet
+        setTotal(res.count || 0)
+      } else {
+        const params = {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          type: filterType,
+          isRead: filterRead,
+          email: filterEmail,
+        }
+        if (viewMode === "sent") {
+          params.senderEmail = adminEmail
+        }
+        const res = await getNotifications(params)
+        let data = res.data || []
+        let totalCount = res.total || 0
+        
+        // Fallback frontend filter in case backend doesn't filter (e.g. old service file cached)
+        if (viewMode === "sent" && adminEmail) {
+          // If the backend didn't filter (we can tell if there are items with wrong senderEmail)
+          if (data.some(n => n.senderEmail !== adminEmail)) {
+            data = data.filter(n => n.senderEmail === adminEmail)
+            totalCount = data.length // rough estimate since pagination is broken in this fallback
+          }
+        }
+        
+        setNotifications(data)
+        setTotalPages(res.pages || 1)
+        setTotal(totalCount)
+      }
     } catch (error) {
       console.error("Failed to load notifications:", error)
     } finally {
       setLoading(false)
     }
-  }, [page, filterType, filterRead, filterEmail])
+  }, [page, filterType, filterRead, filterEmail, viewMode, adminEmail])
 
   useEffect(() => {
     fetchNotifications(page)
-  }, [page, filterType, filterRead, filterEmail]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, filterType, filterRead, filterEmail, viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // SSE — prepend new notifications to the list in real-time
   const handleSSENotification = useCallback((notif) => {
@@ -242,31 +267,49 @@ export function Notifications() {
             Manage global alerts, monitor user notifications, and broadcast messages to your community.
           </p>
         </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(v => !v)}
-            className={`flex-1 sm:flex-none border-dashed ${hasActiveFilters ? "border-blue-400 text-blue-600" : ""}`}
-          >
-            <Filter className={`mr-2 h-4 w-4 ${hasActiveFilters ? "text-blue-600" : ""}`} />
-            Filters {hasActiveFilters && `(${[filterType !== "all", filterRead !== "all", filterEmail !== ""].filter(Boolean).length})`}
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => fetchNotifications(page)} 
-            disabled={loading}
-            className="flex-1 sm:flex-none border-dashed"
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 
-            {loading ? 'Refreshing' : 'Refresh'}
-          </Button>
-          <Button 
-            onClick={() => { setOpenDrawer(true); setShowValidation(false); setFormErrors({}) }} 
-            className="flex-1 sm:flex-none shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black transition-all hover:scale-105"
-          >
-            <Send className="mr-2 h-4 w-4" /> Broadcast
-          </Button>
+        <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(v => !v)}
+              className={`flex-1 sm:flex-none border-dashed ${hasActiveFilters ? "border-blue-400 text-blue-600" : ""}`}
+            >
+              <Filter className={`mr-2 h-4 w-4 ${hasActiveFilters ? "text-blue-600" : ""}`} />
+              Filters {hasActiveFilters && `(${[filterType !== "all", filterRead !== "all", filterEmail !== ""].filter(Boolean).length})`}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => fetchNotifications(page)} 
+              disabled={loading}
+              className="flex-1 sm:flex-none border-dashed"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 
+              {loading ? 'Refreshing' : 'Refresh'}
+            </Button>
+            <Button 
+              onClick={() => { setOpenDrawer(true); setShowValidation(false); setFormErrors({}) }} 
+              className="flex-1 sm:flex-none shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black transition-all hover:scale-105"
+            >
+              <Send className="mr-2 h-4 w-4" /> Broadcast
+            </Button>
+          </div>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex bg-slate-100 p-1 rounded-lg w-fit">
+        <button 
+          onClick={() => { setViewMode('inbox'); setPage(1); }} 
+          className={`px-5 py-2 text-sm font-semibold rounded-md transition-all ${viewMode === 'inbox' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          My Inbox
+        </button>
+        <button 
+          onClick={() => { setViewMode('sent'); setPage(1); }} 
+          className={`px-5 py-2 text-sm font-semibold rounded-md transition-all ${viewMode === 'sent' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Sent by Me
+        </button>
       </div>
 
       {/* Filter Panel */}

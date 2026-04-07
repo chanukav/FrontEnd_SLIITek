@@ -42,6 +42,14 @@ const refreshClient = axios.create({
 
 let refreshPromise = null;
 
+api.interceptors.request.use((config) => {
+  const auth = getStoredAuth();
+  if (auth?.token) {
+    config.headers.Authorization = `Bearer ${auth.token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {

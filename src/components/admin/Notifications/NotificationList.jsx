@@ -84,7 +84,8 @@ export function NotificationList({ notifications, onMarkAsRead, onMarkAsUnread, 
                 </p>
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs text-muted-foreground/70 font-mono">
-                    Email: {notif.email}
+                    {notif.email === "all" ? "To: Broadcast (All Users)" : `To: ${notif.email}`}
+                    {notif.senderEmail && ` • From: ${notif.senderEmail}`}
                   </p>
                 </div>
               </div>
