@@ -6,7 +6,6 @@ import { Users } from "./pages/admin/Users/Users"
 import { Reports } from "./pages/admin/Reports/Reports"
 import { Notifications } from "./pages/admin/Notifications/Notifications"
 import { Settings } from "./pages/admin/Settings/Settings"
-import { UserLayout } from "./components/user/layout/UserLayout"
 import { Profile as UserProfile } from "./pages/user/Profile/Profile"
 import { Notifications as UserNotifications } from "./pages/user/Notifications/Notifications"
 import { Messages as UserMessages } from "./pages/user/Messages/Messages"
@@ -89,15 +88,6 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
 
-          {/* User app shell (UserLayout) — all sub-pages use NewUserDashboard or related components */}
-          <Route path="/user" element={<UserLayout />}>
-            <Route index element={<NewUserDashboard />} />
-            <Route path="profile" element={<UserProfile />} />
-            <Route path="notifications" element={<UserNotifications />} />
-            <Route path="messages" element={<UserMessages />} />
-            <Route path="settings" element={<UserSettings />} />
-          </Route>
-
           {/* Role based dashboard redirects */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
 
@@ -105,15 +95,47 @@ function App() {
           <Route
             path="/dashboard/user"
             element={
-              <ProtectedRoute allowedRoles={["user"]}>
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
                 <NewUserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/profile"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/notifications"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
+                <UserNotifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/messages"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
+                <UserMessages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/user/settings"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
+                <UserSettings />
               </ProtectedRoute>
             }
           />
           <Route
             path="/dashboard/user/questions"
             element={
-              <ProtectedRoute allowedRoles={["user"]}>
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
                 <QuestionsPage />
               </ProtectedRoute>
             }
@@ -121,32 +143,8 @@ function App() {
           <Route
             path="/dashboard/user/communities"
             element={
-              <ProtectedRoute allowedRoles={["user"]}>
+              <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
                 <CommunitiesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/user/notifications"
-            element={
-              <ProtectedRoute allowedRoles={["user"]}>
-                <Navigate to="/user/notifications" replace />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/user/profile"
-            element={
-              <ProtectedRoute allowedRoles={["user"]}>
-                <Navigate to="/user/profile" replace />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/user/settings"
-            element={
-              <ProtectedRoute allowedRoles={["user"]}>
-                <Navigate to="/user/settings" replace />
               </ProtectedRoute>
             }
           />

@@ -151,7 +151,15 @@ export function Header({ setIsOpen }) {
 
                 <div className="py-1">
                   <Link
-                    to="/admin/settings"
+                    to="/admin"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    Admin Panel
+                  </Link>
+                  <Link
+                    to="/dashboard/user"
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
                   >
