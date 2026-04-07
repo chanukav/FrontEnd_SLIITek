@@ -9,6 +9,7 @@ import { Input } from "../../../components/ui/input"
 import { NotificationList } from "../../../components/admin/Notifications/NotificationList"
 import { NotificationDialog } from "../../../components/admin/Notifications/NotificationDialog"
 import { DeleteNotificationDialog } from "../../../components/notifications/DeleteNotificationDialog"
+import { ConfirmSendNotificationDialog } from "../../../components/notifications/ConfirmSendNotificationDialog"
 import { 
   getNotifications, 
   getUserNotifications,
@@ -47,6 +48,8 @@ export function Notifications() {
   const [formErrors, setFormErrors] = useState({})
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const [confirmSendOpen, setConfirmSendOpen] = useState(false)
+  const [sendDraft, setSendDraft] = useState(null)
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -189,31 +192,52 @@ export function Notifications() {
     }
   }
 
-  const handleSend = async () => {
+  const handleSend = () => {
     setShowValidation(true)
     const { valid, errors, normalized } = validateNotificationForm()
-    if (!valid) { setFormErrors(errors); return }
+    if (!valid) {
+      setFormErrors(errors)
+      return
+    }
+    setFormErrors({})
+    setSendDraft({
+      email: normalized.email,
+      type: newType,
+      title: normalized.title,
+      message: normalized.message,
+      entityType: normalized.entityType,
+      entityId: normalized.entityId,
+    })
+    setConfirmSendOpen(true)
+  }
 
+  const executeSend = async () => {
+    if (!sendDraft) return
     try {
       setSending(true)
       setFormErrors({})
       const response = await createNotification({
-        email: normalized.email,
-        type: newType,
-        title: normalized.title,
-        message: normalized.message,
-        entityType: normalized.entityType,
-        entityId: normalized.entityId,
+        email: sendDraft.email,
+        type: sendDraft.type,
+        title: sendDraft.title,
+        message: sendDraft.message,
+        entityType: sendDraft.entityType,
+        entityId: sendDraft.entityId,
       })
-      
+
       toast.success(response.message || "Notification queued for delivery")
-      
+
+      setConfirmSendOpen(false)
+      setSendDraft(null)
       setOpenDrawer(false)
       setShowValidation(false)
-      setNewEmail(""); setNewTitle(""); setNewMessage("")
-      setNewType("announcement"); setNewEntityType("system"); setNewEntityId("")
-      
-      // Delay fetching slightly to allow the background worker to process the queue
+      setNewEmail("")
+      setNewTitle("")
+      setNewMessage("")
+      setNewType("announcement")
+      setNewEntityType("system")
+      setNewEntityId("")
+
       setTimeout(() => {
         setPage(1)
         fetchNotifications(1)
@@ -278,6 +302,22 @@ export function Notifications() {
         notificationSnippet={deleteTarget?.snippet}
         onConfirm={confirmDelete}
         isDeleting={deleteBusy}
+      />
+      <ConfirmSendNotificationDialog
+        open={confirmSendOpen}
+        onOpenChange={(v) => {
+          if (!v && sending) return
+          setConfirmSendOpen(v)
+          if (!v) setSendDraft(null)
+        }}
+        audienceLabel={
+          sendDraft?.email === "all" ? "All users (broadcast)" : sendDraft?.email || "—"
+        }
+        notificationType={sendDraft?.type}
+        title={sendDraft?.title}
+        messageSnippet={sendDraft?.message}
+        onConfirm={executeSend}
+        isSending={sending}
       />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border shadow-sm">
