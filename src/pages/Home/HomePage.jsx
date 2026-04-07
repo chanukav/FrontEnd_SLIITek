@@ -135,7 +135,7 @@ function QuestionCard({ q }) {
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           {[
             { label: "answers", value: q.answers?.length ?? q.answerCount ?? 0, good: (q.answers?.length ?? q.answerCount ?? 0) > 0 },
-            { label: "votes",   value: q.votes ?? q.upvotes ?? 0, good: false },
+            { label: "votes",   value: q.voteScore ?? 0, good: false },
           ].map((stat) => (
             <span key={stat.label} style={{
               fontSize: "0.75rem", fontWeight: 700,

@@ -192,6 +192,29 @@ function QuestionDetailsPage() {
     }
   };
 
+  const onToggleQuestionVote = async () => {
+    if (!auth?.token) {
+      navigate("/login");
+      return;
+    }
+    try {
+      setError("");
+      const liked = !!question?.likedByMe;
+      const res = liked ? await qaApi.unvoteQuestion(id) : await qaApi.voteQuestion(id);
+      setQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              voteScore: res.voteScore,
+              likedByMe: !!res.likedByMe,
+            }
+          : prev
+      );
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || "Vote failed");
+    }
+  };
+
   const canEdit = (answer) => currentUser && answer.authorId?._id === currentUser.id;
 
   const canDelete = (answer) =>
@@ -400,6 +423,15 @@ function QuestionDetailsPage() {
         <div className="flex justify-between items-start gap-3">
           <h1 className="text-2xl font-bold">{question.title}</h1>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={`px-3 py-1 rounded border text-sm ${
+                question.likedByMe ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:bg-slate-50"
+              }`}
+              onClick={onToggleQuestionVote}
+            >
+              Vote ({question.voteScore ?? 0})
+            </button>
             {question.category && (
               <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.category}</span>
             )}
