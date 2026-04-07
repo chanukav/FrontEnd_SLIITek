@@ -136,7 +136,7 @@ export function Notifications() {
     const allowedTypes = new Set(["announcement", "answer", "comment", "best_answer", "report_update"])
 
     if (!email) errors.email = "Target email is required"
-    else if (!emailRegex.test(email)) errors.email = "Enter a valid email address"
+    else if (email !== "all" && !emailRegex.test(email)) errors.email = "Enter a valid email address or 'all'"
 
     if (!newType) errors.type = "Notification type is required"
     else if (!allowedTypes.has(newType)) errors.type = "Invalid notification type"
@@ -169,7 +169,7 @@ export function Notifications() {
     try {
       setSending(true)
       setFormErrors({})
-      await createNotification({
+      const response = await createNotification({
         email: normalized.email,
         type: newType,
         title: normalized.title,
@@ -177,12 +177,19 @@ export function Notifications() {
         entityType: normalized.entityType,
         entityId: normalized.entityId,
       })
+      
+      toast.success(response.message || "Notification queued for delivery")
+      
       setOpenDrawer(false)
       setShowValidation(false)
       setNewEmail(""); setNewTitle(""); setNewMessage("")
       setNewType("announcement"); setNewEntityType("system"); setNewEntityId("")
-      setPage(1)
-      fetchNotifications(1)
+      
+      // Delay fetching slightly to allow the background worker to process the queue
+      setTimeout(() => {
+        setPage(1)
+        fetchNotifications(1)
+      }, 1500)
     } catch (error) {
       console.error("Failed to create notification:", error)
       toast.error("Failed to send notification: " + error.message)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import {
   Users as UsersIcon, UserCheck, AlertTriangle, Send,
-  TrendingUp, TrendingDown, Activity, ArrowRight,
+  TrendingUp, TrendingDown, Activity, ArrowRight, Calendar,
 } from "lucide-react"
 import {
   Bar, BarChart, ResponsiveContainer, XAxis, YAxis,
@@ -47,9 +47,10 @@ const stat_colors = {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm">
+      <div className="bg-white border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm"
+           style={{ borderTop: "2px solid #f9bf3b" }}>
         <p className="font-semibold text-foreground">{label}</p>
-        <p className="text-primary font-bold mt-0.5">{payload[0].value.toLocaleString()}</p>
+        <p className="font-bold mt-0.5" style={{ color: "#f9bf3b" }}>{payload[0].value.toLocaleString()}</p>
       </div>
     )
   }
@@ -70,6 +71,7 @@ export function Dashboard() {
       color: "blue",
       iconBg: "#dbeafe",
       iconColor: "#2563eb",
+      accentColor: "#3b82f6",
     },
     {
       label: "Active Users",
@@ -80,6 +82,7 @@ export function Dashboard() {
       color: "green",
       iconBg: "#d1fae5",
       iconColor: "#059669",
+      accentColor: "#10b981",
     },
     {
       label: "Open Reports",
@@ -90,6 +93,7 @@ export function Dashboard() {
       color: "red",
       iconBg: "#fee2e2",
       iconColor: "#dc2626",
+      accentColor: "#ef4444",
     },
     {
       label: "Notifications Sent",
@@ -98,8 +102,9 @@ export function Dashboard() {
       up: true,
       icon: Send,
       color: "yellow",
-      iconBg: "#fef3c7",
-      iconColor: "#d97706",
+      iconBg: "rgba(249,191,59,0.18)",
+      iconColor: "#b45309",
+      accentColor: "#f9bf3b",
     },
   ]
 
@@ -108,20 +113,44 @@ export function Dashboard() {
 
       {/* ── Greeting banner ─────────────────────────────── */}
       <div
-        className="rounded-2xl px-7 py-5 flex items-center justify-between overflow-hidden relative"
+        className="rounded-2xl px-7 py-6 flex items-center justify-between overflow-hidden relative"
         style={{
-          background: "linear-gradient(135deg, #1e2535 0%, #2c3a56 100%)",
-          boxShadow: "0 4px 24px rgba(30,37,53,0.25)",
+          background: "linear-gradient(135deg, #00205B 0%, #1a2e5e 50%, #2c3a56 100%)",
+          boxShadow: "0 4px 32px rgba(0,32,91,0.35)",
         }}
       >
-        <div className="relative z-10">
+        {/* AmberGold left accent bar */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+          style={{ background: "linear-gradient(180deg, #f9bf3b 0%, rgba(249,191,59,0.25) 100%)" }}
+        />
+        {/* AmberGold bottom accent line */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-[2px]"
+          style={{ background: "linear-gradient(90deg, #f9bf3b 0%, rgba(249,191,59,0.2) 60%, transparent 100%)" }}
+        />
+        <div className="relative z-10 pl-2">
+          <div className="flex items-center gap-2.5 mb-2.5">
+            <span
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full tracking-widest uppercase"
+              style={{ background: "rgba(249,191,59,0.18)", color: "#f9bf3b", border: "1px solid rgba(249,191,59,0.3)" }}
+            >
+              Live
+            </span>
+            <span className="text-white/35 text-xs flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+            </span>
+          </div>
           <h2 className="text-2xl font-bold text-white">Dashboard Overview</h2>
           <p className="text-white/50 text-sm mt-1">Here's what's happening across your platform today.</p>
         </div>
-        <Activity className="h-14 w-14 text-white/10 absolute right-8" />
-        {/* decorative circles */}
-        <div className="absolute -top-6 -right-6 h-28 w-28 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-4 right-20 h-16 w-16 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
+        <Activity className="h-14 w-14 absolute right-8" style={{ color: "rgba(249,191,59,0.12)" }} />
+        {/* decorative glows */}
+        <div className="absolute -top-6 -right-6 h-32 w-32 rounded-full pointer-events-none blur-2xl"
+             style={{ background: "rgba(249,191,59,0.12)" }} />
+        <div className="absolute -bottom-4 right-24 h-20 w-20 rounded-full pointer-events-none blur-2xl"
+             style={{ background: "rgba(0,145,255,0.1)" }} />
       </div>
 
       {/* ── Stat Cards ──────────────────────────────────── */}
@@ -130,7 +159,7 @@ export function Dashboard() {
           <div
             key={i}
             className={`stat-card ${s.color} animate-fade-up`}
-            style={{ animationDelay: `${i * 70}ms` }}
+            style={{ animationDelay: `${i * 70}ms`, borderTop: `3px solid ${s.accentColor}` }}
           >
             <div className="flex items-start justify-between mb-4">
               <div
@@ -156,13 +185,14 @@ export function Dashboard() {
       <div className="grid gap-5 lg:grid-cols-7">
 
         {/* Bar Chart */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-border p-6 shadow-soft">
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-border p-6 shadow-soft"
+             style={{ borderTop: "3px solid #f9bf3b" }}>
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-bold text-foreground text-base">User Growth</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Monthly registrations</p>
             </div>
-            <span className="pill pill-blue">
+            <span className="pill pill-yellow">
               <TrendingUp className="h-2.5 w-2.5" /> +40%
             </span>
           </div>
@@ -195,7 +225,8 @@ export function Dashboard() {
         </div>
 
         {/* Area Chart */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-border p-6 shadow-soft">
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-border p-6 shadow-soft"
+             style={{ borderTop: "3px solid #ef4444" }}>
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-bold text-foreground text-base">Reports This Week</h3>
@@ -233,10 +264,20 @@ export function Dashboard() {
       </div>
 
       {/* ── Recent Activity ──────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-border shadow-soft overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h3 className="font-bold text-foreground text-base">Recent Activity</h3>
-          <button className="text-xs text-primary font-semibold flex items-center gap-1 hover:opacity-80 transition">
+      <div className="bg-white rounded-2xl border border-border shadow-soft overflow-hidden"
+           style={{ borderTop: "3px solid #00205B" }}>
+        <div
+          className="flex items-center justify-between px-6 py-4 border-b border-border"
+          style={{ background: "linear-gradient(135deg, rgba(0,32,91,0.03) 0%, transparent 100%)" }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full" style={{ background: "#f9bf3b" }} />
+            <h3 className="font-bold text-foreground text-base">Recent Activity</h3>
+          </div>
+          <button
+            className="text-xs font-semibold flex items-center gap-1 hover:opacity-80 transition px-3 py-1.5 rounded-lg"
+            style={{ color: "#b45309", background: "rgba(249,191,59,0.1)", border: "1px solid rgba(249,191,59,0.25)" }}
+          >
             View all <ArrowRight className="h-3 w-3" />
           </button>
         </div>

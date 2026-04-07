@@ -44,7 +44,7 @@ export function NotificationDialog({
         <div className="space-y-5 py-4">
           <div className="space-y-2">
             <label htmlFor="title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notification Title</label>
-            <Input
+              <Input
               id="title"
                 type="text"
               placeholder="e.g. System Update v2.0"
@@ -53,6 +53,7 @@ export function NotificationDialog({
                 className={`bg-muted/50 focus-visible:ring-1 focus-visible:bg-transparent transition-all ${
                   getFieldError("title") ? "border-red-500 focus-visible:ring-red-500" : ""
                 }`}
+                style={{ "--tw-ring-color": getFieldError("title") ? "" : "#f9bf3b" }}
                 aria-invalid={!!getFieldError("title")}
                 required
             />
@@ -66,13 +67,14 @@ export function NotificationDialog({
               <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target User Email</label>
               <Input
                 id="email"
-                  type="email"
-                placeholder="e.g. user@example.com"
+                  type="text"
+                placeholder="e.g. user@example.com OR 'all'"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                   className={`bg-muted/50 focus-visible:ring-1 focus-visible:bg-transparent transition-all ${
                     getFieldError("email") ? "border-red-500 focus-visible:ring-red-500" : ""
                   }`}
+                  style={{ "--tw-ring-color": getFieldError("email") ? "" : "#f9bf3b" }}
                   aria-invalid={!!getFieldError("email")}
                   required
               />
@@ -85,7 +87,8 @@ export function NotificationDialog({
               <select
                 id="type"
                   required
-                className="flex h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                className="flex h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:bg-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                style={{ "--tw-ring-color": "#f9bf3b" }}
                 value={newType}
                 onChange={(e) => setNewType(e.target.value)}
               >
@@ -112,6 +115,7 @@ export function NotificationDialog({
                   className={`bg-muted/50 focus-visible:ring-1 focus-visible:bg-transparent transition-all ${
                     getFieldError("entityType") ? "border-red-500 focus-visible:ring-red-500" : ""
                   }`}
+                  style={{ "--tw-ring-color": getFieldError("entityType") ? "" : "#f9bf3b" }}
                   aria-invalid={!!getFieldError("entityType")}
                   required
               />
@@ -129,6 +133,7 @@ export function NotificationDialog({
                   className={`bg-muted/50 focus-visible:ring-1 focus-visible:bg-transparent transition-all ${
                     getFieldError("entityId") ? "border-red-500 focus-visible:ring-red-500" : ""
                   }`}
+                  style={{ "--tw-ring-color": getFieldError("entityId") ? "" : "#f9bf3b" }}
                   aria-invalid={!!getFieldError("entityId")}
               />
                 {getFieldError("entityId") && (
@@ -141,9 +146,10 @@ export function NotificationDialog({
             <label htmlFor="message" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Message Body</label>
             <textarea
               id="message"
-                className={`flex min-h-[120px] w-full rounded-md border border-input bg-muted/50 px-3 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all resize-none ${
+                className={`flex min-h-[120px] w-full rounded-md border border-input bg-muted/50 px-3 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:bg-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all resize-none ${
                   getFieldError("message") ? "border-red-500 focus-visible:ring-red-500" : ""
                 }`}
+                style={{ "--tw-ring-color": getFieldError("message") ? "" : "#f9bf3b" }}
               placeholder="What do you want to tell your users?"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
@@ -159,7 +165,7 @@ export function NotificationDialog({
           <Button variant="outline" onClick={() => onClose(false)} disabled={sending}>
             Cancel
           </Button>
-          <Button onClick={onSend} disabled={sending} className="bg-[#f9bf3b] hover:bg-[#e0a92f] text-black shadow-md min-w-[150px] transition-all">
+          <Button onClick={onSend} disabled={sending} className="text-black shadow-md min-w-[150px] transition-all" style={{ background: "#f9bf3b" }} onMouseEnter={(e) => { e.currentTarget.style.background = "#e0a92f" }} onMouseLeave={(e) => { e.currentTarget.style.background = "#f9bf3b" }}>
             {sending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
