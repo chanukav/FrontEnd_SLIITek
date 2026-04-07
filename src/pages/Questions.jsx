@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
+import { API_ORIGIN } from "../lib/api";
+import { ImageDropZone } from "../components/ImageDropZone";
 
 const displayName = (user) =>
   user?.fullName ||
   `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
   user?.name ||
   "Unknown";
+
+const questionThumbSrc = (img) => {
+  const u = (img?.viewUrl || img?.url || "").trim();
+  if (!u) return "";
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  if (u.startsWith("/")) return `${API_ORIGIN}${u}`;
+  return `${API_ORIGIN}/${u}`;
+};
 
 function QuestionsPage() {
   const navigate = useNavigate();
@@ -18,6 +28,8 @@ function QuestionsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("General / Other");
+  const [tagsInput, setTagsInput] = useState("");
+  const [imageFiles, setImageFiles] = useState([]);
   const [posting, setPosting] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -110,10 +122,17 @@ function QuestionsPage() {
     try {
       setPosting(true);
       setError("");
-      await qaApi.createQuestion({ title, body, category });
+      const tags = tagsInput.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+      const data = await qaApi.createQuestion({ title, body, category, tags });
+      const qId = data?.question?._id;
+      if (imageFiles.length && qId) {
+        await qaApi.uploadQuestionImages(qId, imageFiles);
+      }
       setTitle("");
       setBody("");
       setCategory("General / Other");
+      setTagsInput("");
+      setImageFiles([]);
       await loadQuestions();
     } catch (err) {
       const status = err?.response?.status;
@@ -131,26 +150,74 @@ function QuestionsPage() {
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="bg-white rounded-xl shadow p-5">
-        <h2 className="text-lg font-semibold mb-3">Ask a question</h2>
-        <form onSubmit={submitQuestion} className="space-y-3">
-          <select
-            className="w-full border rounded-md px-3 py-2"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            required
-          >
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <input
-            className="w-full border rounded-md px-3 py-2"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
+        <h2 className="text-lg font-semibold mb-3">Ask a Question</h2>
+        <form onSubmit={submitQuestion} className="space-y-3 max-w-3xl">
+          <div>
+            <label htmlFor="q-title" className="block text-sm font-semibold text-slate-700 mb-1">
+              Title
+            </label>
+            <input
+              id="q-title"
+              className="w-full border rounded-md px-3 py-2"
+              placeholder="What is your question? Be specific."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="q-body" className="block text-sm font-semibold text-slate-700 mb-1">
+              Body
+            </label>
+            <textarea
+              id="q-body"
+              className="w-full border rounded-md px-3 py-2 min-h-32"
+              placeholder="Describe your question in detail. Include code, error messages, what you've tried, etc."
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="q-category" className="block text-sm font-semibold text-slate-700 mb-1">
+              Category
+            </label>
+            <select
+              id="q-category"
+              className="w-full border rounded-md px-3 py-2"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="q-tags" className="block text-sm font-semibold text-slate-700 mb-1">
+              Tags (comma separated)
+            </label>
+            <input
+              id="q-tags"
+              className="w-full border rounded-md px-3 py-2"
+              placeholder="e.g. javascript, react, computing"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+            />
+          </div>
+
+          <ImageDropZone
+            files={imageFiles}
+            onFilesChange={setImageFiles}
+            maxFiles={8}
+            disabled={posting}
+            label="Screenshots & images (optional, up to 8)"
           />
 
           {(suggestionsLoading || suggestions.length > 0) && (
@@ -173,13 +240,7 @@ function QuestionsPage() {
               )}
             </div>
           )}
-          <textarea
-            className="w-full border rounded-md px-3 py-2 min-h-28"
-            placeholder="Explain your question"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            required
-          />
+
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"
@@ -224,6 +285,23 @@ function QuestionsPage() {
                 to={`/questions/${q._id}`}
                 className="block border rounded-lg p-3 hover:bg-slate-50"
               >
+                {q.images?.length > 0 && (
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {q.images.slice(0, 3).map((img) => (
+                      <img
+                        key={`${img.blobName || ""}-${img.url}`}
+                        src={questionThumbSrc(img)}
+                        alt=""
+                        className="h-12 w-12 object-cover rounded-md border bg-slate-50"
+                      />
+                    ))}
+                    {q.images.length > 3 && (
+                      <span className="text-xs font-semibold text-slate-600 border rounded-md px-2 py-1 bg-white">
+                        +{q.images.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <h2 className="font-semibold">{q.title}</h2>
                   <div className="flex items-center gap-2">
