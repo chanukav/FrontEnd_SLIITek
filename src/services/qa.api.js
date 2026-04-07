@@ -54,7 +54,7 @@ export const qaApi = {
   deleteQuestion: async (id) => unwrap(await api.delete(`/questions/${id}`, withAuth())),
 
   getAnswersByQuestion: async (questionId) =>
-    unwrap(await api.get(`/answers/question/${questionId}`)),
+    unwrap(await api.get(`/answers/question/${questionId}`, withAuth())),
   postAnswer: async (questionId, payload) =>
     unwrap(await api.post(`/answers/${questionId}`, payload, withAuth())),
   editAnswer: async (answerId, payload) =>
@@ -63,6 +63,10 @@ export const qaApi = {
     unwrap(await api.delete(`/answers/${answerId}`, withAuth())),
   markBestAnswer: async (answerId) =>
     unwrap(await api.patch(`/answers/${answerId}/best`, {}, withAuth())),
+  voteAnswer: async (answerId) =>
+    unwrap(await api.post(`/answers/${answerId}/vote`, {}, withAuth())),
+  unvoteAnswer: async (answerId) =>
+    unwrap(await api.delete(`/answers/${answerId}/vote`, withAuth())),
   addCommentToAnswer: async (answerId, payload) =>
     unwrap(await api.post(`/answers/${answerId}/comments`, payload, withAuth())),
 };

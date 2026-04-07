@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
+import { FaRegThumbsUp, FaThumbsUp } from "react-icons/fa";
 
 const displayName = (user) =>
   user?.fullName ||
@@ -18,7 +19,8 @@ function QuestionDetailsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
-  const [commentDrafts, setCommentDrafts] = useState({});
+  // Store reply textarea values without state updates, to prevent "stuck typing".
+  const replyTextareasRef = useRef({});
 
   const auth = (() => {
     try {
@@ -183,19 +185,158 @@ function QuestionDetailsPage() {
     }
   };
 
-  const addComment = async (answerId) => {
-    const text = commentDrafts[answerId] || "";
-    if (!text.trim()) return;
+  const onToggleLike = async (answerId, likedByMe) => {
+    if (!auth?.token) {
+      navigate("/login");
+      return;
+    }
     try {
-      await qaApi.addCommentToAnswer(answerId, { body: text });
-      setCommentDrafts((prev) => ({ ...prev, [answerId]: "" }));
+      if (likedByMe) {
+        await qaApi.unvoteAnswer(answerId);
+      } else {
+        await qaApi.voteAnswer(answerId);
+      }
+      await load();
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Comment failed");
+      setError(err?.response?.data?.message || err.message || "Like failed");
+    }
+  };
+
+  const submitReply = async (parentAnswerId) => {
+    if (!auth?.token) {
+      navigate("/login");
+      return;
+    }
+
+    const key = String(parentAnswerId);
+    const el = replyTextareasRef.current?.[key];
+    const text = el?.value || "";
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    try {
+      await qaApi.postAnswer(id, { body: trimmed, parentAnswerId });
+      if (el) el.value = "";
+      await load();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || "Reply failed");
     }
   };
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (!question) return <div className="p-6">Question not found</div>;
+  const bestAnswerId = answers?.[0]?._id;
+
+  const AnswerCard = ({ answer, depth }) => {
+    const isBest = bestAnswerId && answer._id === bestAnswerId;
+    return (
+      <div
+        className={`border rounded-lg p-3 ${isBest ? "border-green-500 bg-green-50" : ""} ${
+          depth > 0 ? "ml-4 border-l-2 border-slate-200 pl-4" : ""
+        }`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-medium">{displayName(answer.authorId)}</p>
+          {isBest && <span className="text-xs text-green-700 font-semibold">Best</span>}
+        </div>
+
+        <p className="text-slate-700 mt-1">{answer.body}</p>
+
+        <div className="flex flex-wrap gap-2 mt-3">
+          {(() => {
+            const liked = !!answer.likedByMe;
+            return (
+              <>
+                <button
+                  type="button"
+                  className={`px-3 py-1 rounded border text-sm flex items-center gap-2 ${
+                    liked ? "border-blue-400 bg-blue-50 cursor-not-allowed" : "border-blue-400 bg-blue-50"
+                  }`}
+                  disabled={liked}
+                  onClick={() => onToggleLike(answer._id, liked)}
+                >
+                  <FaRegThumbsUp size={16} />
+                  Like ({answer.voteScore || 0})
+                </button>
+                <button
+                  type="button"
+                  // Keep unlike button grey whether it's enabled or disabled.
+                  className="px-3 py-1 rounded border text-sm flex items-center gap-2 border-slate-300 text-slate-400"
+                  disabled={!liked}
+                  onClick={() => onToggleLike(answer._id, liked)}
+                >
+                  <FaThumbsUp size={16} />
+                  Unlike ({answer.voteScore || 0})
+                </button>
+              </>
+            );
+          })()}
+
+          {canMarkBest(answer) && (
+            <button
+              type="button"
+              className="px-3 py-1 rounded border text-sm"
+              onClick={() => onMarkBest(answer._id)}
+            >
+              Mark best
+            </button>
+          )}
+
+          {canEdit(answer) && (
+            <button
+              type="button"
+              className="px-3 py-1 rounded border text-sm"
+              onClick={() => onEdit(answer)}
+            >
+              Edit
+            </button>
+          )}
+
+          {canDelete(answer) && (
+            <button
+              type="button"
+              className="px-3 py-1 rounded border border-red-300 text-red-600 text-sm"
+              onClick={() => onDelete(answer._id)}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+
+        {auth?.token ? (
+          <div className="mt-3">
+            <textarea
+              className="w-full border rounded-md px-3 py-2 min-h-20"
+              placeholder="Write a reply"
+              ref={(el) => {
+                if (!el) return;
+                replyTextareasRef.current[String(answer._id)] = el;
+              }}
+            />
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                className="px-3 py-2 rounded-md bg-header text-white"
+                onClick={() => submitReply(answer._id)}
+              >
+                Reply
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 mt-2">Login to reply</p>
+        )}
+
+        {answer.replies?.length ? (
+          <div className="mt-3 space-y-3">
+            {answer.replies.map((reply) => (
+              <AnswerCard key={reply._id} answer={reply} depth={depth + 1} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -262,60 +403,7 @@ function QuestionDetailsPage() {
         <h2 className="text-lg font-semibold mb-3">Answers ({answers.length})</h2>
         <div className="space-y-3">
           {answers.map((answer) => (
-            <div
-              key={answer._id}
-              className={`border rounded-lg p-3 ${answer.isBest ? "border-green-500 bg-green-50" : ""}`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{displayName(answer.authorId)}</p>
-                {answer.isBest && <span className="text-xs text-green-700 font-semibold">Best</span>}
-              </div>
-              <p className="text-slate-700 mt-1">{answer.body}</p>
-
-              <div className="flex gap-2 mt-3">
-                {canMarkBest(answer) && (
-                  <button
-                    className="px-3 py-1 rounded border text-sm"
-                    onClick={() => onMarkBest(answer._id)}
-                  >
-                    Mark best
-                  </button>
-                )}
-                {canEdit(answer) && (
-                  <button
-                    className="px-3 py-1 rounded border text-sm"
-                    onClick={() => onEdit(answer)}
-                  >
-                    Edit
-                  </button>
-                )}
-                {canDelete(answer) && (
-                  <button
-                    className="px-3 py-1 rounded border border-red-300 text-red-600 text-sm"
-                    onClick={() => onDelete(answer._id)}
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-
-              <div className="flex gap-2 mt-3">
-                <input
-                  className="flex-1 border rounded-md px-3 py-2"
-                  placeholder="Add comment"
-                  value={commentDrafts[answer._id] || ""}
-                  onChange={(e) =>
-                    setCommentDrafts((prev) => ({ ...prev, [answer._id]: e.target.value }))
-                  }
-                />
-                <button
-                  className="px-3 py-2 rounded border text-sm"
-                  onClick={() => addComment(answer._id)}
-                >
-                  Comment
-                </button>
-              </div>
-            </div>
+            <AnswerCard key={answer._id} answer={answer} depth={0} />
           ))}
           {!answers.length && <p className="text-slate-600">No answers yet.</p>}
         </div>
