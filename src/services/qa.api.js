@@ -49,6 +49,20 @@ export const qaApi = {
     ),
   createQuestion: async (payload) =>
     unwrap(await api.post("/questions", payload, withAuth())),
+  uploadQuestionImages: async (questionId, files) => {
+    const form = new FormData();
+    for (const f of files) {
+      form.append("images", f);
+    }
+    return unwrap(await api.post(`/questions/${questionId}/images`, form, withAuth()));
+  },
+  removeQuestionImage: async (questionId, url) =>
+    unwrap(
+      await api.delete(`/questions/${questionId}/images`, {
+        ...withAuth(),
+        data: { url },
+      })
+    ),
   editQuestion: async (id, payload) =>
     unwrap(await api.put(`/questions/${id}`, payload, withAuth())),
   deleteQuestion: async (id) => unwrap(await api.delete(`/questions/${id}`, withAuth())),
@@ -63,8 +77,8 @@ export const qaApi = {
     unwrap(await api.delete(`/answers/${answerId}`, withAuth())),
   markBestAnswer: async (answerId) =>
     unwrap(await api.patch(`/answers/${answerId}/best`, {}, withAuth())),
-  voteAnswer: async (answerId) =>
-    unwrap(await api.post(`/answers/${answerId}/vote`, {}, withAuth())),
+  voteAnswer: async (answerId, payload = {}) =>
+    unwrap(await api.post(`/answers/${answerId}/vote`, payload, withAuth())),
   unvoteAnswer: async (answerId) =>
     unwrap(await api.delete(`/answers/${answerId}/vote`, withAuth())),
   addCommentToAnswer: async (answerId, payload) =>

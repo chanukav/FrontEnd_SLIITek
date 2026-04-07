@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { qaApi } from "../../services/qa.api";
+import { API_ORIGIN } from "../../lib/api";
 import { getUserNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
 import HomeHeader from "../../components/home/HomeHeader";
 import HomeSidebar from "../../components/home/HomeSidebar";
+import { ImageDropZone } from "../../components/ImageDropZone";
 
 /* ─── Helper ─────────────────────────────────────────────── */
 const displayName = (user) =>
@@ -20,6 +22,14 @@ const timeAgo = (date) => {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
+};
+
+const questionThumbSrc = (img) => {
+  const u = (img?.viewUrl || img?.url || "").trim();
+  if (!u) return "";
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  if (u.startsWith("/")) return `${API_ORIGIN}${u}`;
+  return `${API_ORIGIN}/${u}`;
 };
 
 /* ─── Question Card ──────────────────────────────────────── */
@@ -50,6 +60,52 @@ function QuestionCard({ q }) {
       <h3 style={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a", marginBottom: "0.45rem", lineHeight: 1.4 }}>
         {q.title}
       </h3>
+
+      {q.images?.length > 0 && (
+        <div
+          style={{
+            marginBottom: "0.75rem",
+            display: "flex",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+          }}
+        >
+          {q.images.slice(0, 3).map((img) => (
+            <img
+              key={`${img.blobName || ""}-${img.url}`}
+              src={questionThumbSrc(img)}
+              alt=""
+              style={{
+                width: 64,
+                height: 64,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#f8fafc",
+              }}
+            />
+          ))}
+          {q.images.length > 3 && (
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                color: "#64748b",
+                fontSize: "0.85rem",
+              }}
+            >
+              +{q.images.length - 3}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Body preview */}
       <p style={{ fontSize: "0.875rem", color: "#64748b", lineHeight: 1.6, marginBottom: "0.75rem",
@@ -266,9 +322,21 @@ function AskQuestion() {
   const { auth } = useAuth();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [category, setCategory] = useState("General / Other");
   const [tagsInput, setTagsInput] = useState("");
+  const [imageFiles, setImageFiles] = useState([]);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+
+  const categories = [
+    "Academic",
+    "Career & Internships",
+    "Campus Life",
+    "Technical / Programming Help",
+    "Study Resources",
+    "Clubs & Events",
+    "General / Other",
+  ];
 
   if (!auth?.token) return <Navigate to="/login" replace />;
 
@@ -277,8 +345,13 @@ function AskQuestion() {
     setPosting(true); setError("");
     try {
       const tags = tagsInput.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
-      await qaApi.createQuestion({ title, body, tags });
-      navigate("/home");
+      const data = await qaApi.createQuestion({ title, body, category, tags });
+      const qId = data?.question?._id;
+      if (imageFiles.length && qId) {
+        await qaApi.uploadQuestionImages(qId, imageFiles);
+      }
+      if (qId) navigate(`/questions/${qId}`);
+      else navigate("/home");
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Failed to post");
     } finally {
@@ -298,10 +371,11 @@ function AskQuestion() {
         {[
           { label: "Title", id: "ask-title", value: title, set: setTitle, type: "input", placeholder: "What is your question? Be specific." },
           { label: "Body", id: "ask-body", value: body, set: setBody, type: "textarea", placeholder: "Describe your question in detail. Include code, error messages, what you've tried, etc." },
+          { label: "Category", id: "ask-category", value: category, set: setCategory, type: "select", options: categories },
           { label: "Tags (comma separated)", id: "ask-tags", value: tagsInput, set: setTagsInput, type: "input", placeholder: "e.g. javascript, react, computing" },
         ].map((field) => (
           <div key={field.id}>
-            <label style={{ display: "block", fontWeight: 600, fontSize: "0.875rem", color: "#374151", marginBottom: "0.4rem" }}>
+            <label htmlFor={field.id} style={{ display: "block", fontWeight: 600, fontSize: "0.875rem", color: "#374151", marginBottom: "0.4rem" }}>
               {field.label}
             </label>
             {field.type === "textarea" ? (
@@ -321,6 +395,27 @@ function AskQuestion() {
                 onFocus={(e) => { e.target.style.borderColor = "#f9bf3b"; e.target.style.boxShadow = "0 0 0 3px rgba(249,191,59,0.15)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
               />
+            ) : field.type === "select" ? (
+              <select
+                id={field.id}
+                value={field.value}
+                onChange={(e) => field.set(e.target.value)}
+                required
+                style={{
+                  width: "100%", padding: "0.7rem 0.9rem", border: "1.5px solid #e2e8f0",
+                  borderRadius: "10px", fontSize: "0.9rem", outline: "none",
+                  boxSizing: "border-box", transition: "border-color 0.18s, box-shadow 0.18s",
+                  background: "#fff", cursor: "pointer",
+                }}
+                onFocus={(e) => { e.target.style.borderColor = "#f9bf3b"; e.target.style.boxShadow = "0 0 0 3px rgba(249,191,59,0.15)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
+              >
+                {field.options.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             ) : (
               <input
                 id={field.id}
@@ -340,6 +435,13 @@ function AskQuestion() {
             )}
           </div>
         ))}
+        <ImageDropZone
+          files={imageFiles}
+          onFilesChange={setImageFiles}
+          maxFiles={8}
+          disabled={posting}
+          label="Screenshots & images (optional, up to 8)"
+        />
         <button
           type="submit" disabled={posting}
           style={{
