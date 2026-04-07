@@ -31,6 +31,12 @@ export const createNotification = async (data) => {
     return res.data;
 };
 
+/** Admin/mod: update a notification from "Sent by me" (same recipient; content metadata only). */
+export const updateSentNotification = async (id, data) => {
+    const res = await api.patch(`${API_URL}/${encodeURIComponent(id)}`, data);
+    return res.data;
+};
+
 export const markAllAsRead = async (email) => {
     if (!email) throw new Error("Email is required");
     const res = await api.put(`${API_URL}/user/${encodeURIComponent(email)}/read-all`);

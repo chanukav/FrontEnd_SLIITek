@@ -8,12 +8,14 @@ import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { NotificationList } from "../../../components/admin/Notifications/NotificationList"
 import { NotificationDialog } from "../../../components/admin/Notifications/NotificationDialog"
+import { EditSentNotificationDialog } from "../../../components/admin/Notifications/EditSentNotificationDialog"
 import { DeleteNotificationDialog } from "../../../components/notifications/DeleteNotificationDialog"
 import { ConfirmSendNotificationDialog } from "../../../components/notifications/ConfirmSendNotificationDialog"
 import { 
   getNotifications, 
   getUserNotifications,
-  createNotification, 
+  createNotification,
+  updateSentNotification,
   markAsRead, 
   markAsUnread,
   deleteNotification 
@@ -50,6 +52,18 @@ export function Notifications() {
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [confirmSendOpen, setConfirmSendOpen] = useState(false)
   const [sendDraft, setSendDraft] = useState(null)
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editAudienceLabel, setEditAudienceLabel] = useState("")
+  const [editType, setEditType] = useState("announcement")
+  const [editTitle, setEditTitle] = useState("")
+  const [editMessage, setEditMessage] = useState("")
+  const [editEntityType, setEditEntityType] = useState("system")
+  const [editEntityId, setEditEntityId] = useState("")
+  const [editSaving, setEditSaving] = useState(false)
+  const [showEditValidation, setShowEditValidation] = useState(false)
+  const [editFormErrors, setEditFormErrors] = useState({})
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -189,6 +203,83 @@ export function Notifications() {
       valid: Object.keys(errors).length === 0,
       errors,
       normalized: { email, title, message, entityType, entityId: entityId || undefined },
+    }
+  }
+
+  const validateEditForm = () => {
+    const errors = {}
+    const title = editTitle.trim()
+    const message = editMessage.trim()
+    const entityType = editEntityType.trim()
+    const entityId = editEntityId.trim()
+    const allowedTypes = new Set(["announcement", "answer", "comment", "best_answer", "report_update"])
+
+    if (!editType) errors.type = "Notification type is required"
+    else if (!allowedTypes.has(editType)) errors.type = "Invalid notification type"
+
+    if (!title) errors.title = "Title is required"
+    else if (title.length < 3) errors.title = "Title must be at least 3 characters"
+    else if (title.length > 120) errors.title = "Title must be at most 120 characters"
+
+    if (!message) errors.message = "Message body is required"
+    else if (message.length < 5) errors.message = "Message must be at least 5 characters"
+    else if (message.length > 800) errors.message = "Message must be at most 800 characters"
+
+    if (!entityType) errors.entityType = "Entity type is required"
+    else if (entityType.length > 80) errors.entityType = "Entity type must be at most 80 characters"
+
+    if (entityId && entityId.length > 200) errors.entityId = "Entity ID must be at most 200 characters"
+
+    return { valid: Object.keys(errors).length === 0, errors }
+  }
+
+  const openEditNotification = (notif) => {
+    if (!notif?._id) return
+    const audience =
+      notif.email === "all" ? "Broadcast (all users)" : `Direct: ${notif.email}`
+    setEditingId(notif._id)
+    setEditAudienceLabel(audience)
+    setEditType(notif.type || "announcement")
+    setEditTitle(notif.title || "")
+    setEditMessage(notif.message || "")
+    setEditEntityType(notif.entityType || "system")
+    setEditEntityId(notif.entityId != null ? String(notif.entityId) : "")
+    setShowEditValidation(false)
+    setEditFormErrors({})
+    setEditOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    setShowEditValidation(true)
+    const { valid, errors } = validateEditForm()
+    if (!valid) {
+      setEditFormErrors(errors)
+      return
+    }
+    if (!editingId) return
+    try {
+      setEditSaving(true)
+      setEditFormErrors({})
+      await updateSentNotification(editingId, {
+        type: editType,
+        title: editTitle.trim(),
+        message: editMessage.trim(),
+        entityType: editEntityType.trim(),
+        entityId: editEntityId.trim() || undefined,
+      })
+      toast.success("Notification updated")
+      setEditOpen(false)
+      setEditingId(null)
+      fetchNotifications(page)
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update notification"
+      toast.error(msg)
+      setEditFormErrors({ _server: msg })
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -452,7 +543,8 @@ export function Notifications() {
           notifications={notifications} 
           onMarkAsRead={handleMarkAsRead} 
           onMarkAsUnread={handleMarkAsUnread}
-          onDelete={requestDelete} 
+          onDelete={requestDelete}
+          onEdit={viewMode === "sent" ? openEditNotification : undefined}
         />
       )}
 
@@ -507,6 +599,31 @@ export function Notifications() {
           </div>
         </div>
       )}
+
+      <EditSentNotificationDialog
+        open={editOpen}
+        onClose={(v) => {
+          if (!v && !editSaving) {
+            setEditOpen(false)
+            setEditingId(null)
+          }
+        }}
+        onSave={handleSaveEdit}
+        saving={editSaving}
+        showValidation={showEditValidation}
+        errors={editFormErrors}
+        audienceLabel={editAudienceLabel}
+        editType={editType}
+        setEditType={setEditType}
+        editTitle={editTitle}
+        setEditTitle={setEditTitle}
+        editEntityType={editEntityType}
+        setEditEntityType={setEditEntityType}
+        editEntityId={editEntityId}
+        setEditEntityId={setEditEntityId}
+        editMessage={editMessage}
+        setEditMessage={setEditMessage}
+      />
 
       <NotificationDialog 
         open={openDrawer}
