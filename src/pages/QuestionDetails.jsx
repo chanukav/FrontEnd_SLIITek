@@ -37,6 +37,34 @@ const patchAnswerInTree = (items, answerId, patch) => {
   });
 };
 
+const insertReplyInTree = (items, parentAnswerId, reply) => {
+  const parentIdStr = String(parentAnswerId);
+  return items.map((item) => {
+    if (String(item._id) === parentIdStr) {
+      return { ...item, replies: [...(item.replies || []), reply] };
+    }
+    if (item.replies?.length) {
+      return { ...item, replies: insertReplyInTree(item.replies, parentAnswerId, reply) };
+    }
+    return item;
+  });
+};
+
+const ANSWER_MIN_LENGTH = 1;
+const ANSWER_MAX_LENGTH = 2000;
+
+const getAnswerValidationError = (text) => {
+  const trimmed = text.trim();
+  if (!trimmed) return "Please write an answer before submitting.";
+  if (trimmed.length < ANSWER_MIN_LENGTH) {
+    return `Answer must be at least ${ANSWER_MIN_LENGTH} characters.`;
+  }
+  if (trimmed.length > ANSWER_MAX_LENGTH) {
+    return `Answer must be less than ${ANSWER_MAX_LENGTH + 1} characters.`;
+  }
+  return "";
+};
+
 function QuestionDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,6 +72,7 @@ function QuestionDetailsPage() {
   const [answers, setAnswers] = useState([]);
   const [newAnswer, setNewAnswer] = useState("");
   const [answerError, setAnswerError] = useState("");
+  const [replyErrors, setReplyErrors] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
@@ -114,17 +143,39 @@ function QuestionDetailsPage() {
     }
 
     const trimmed = newAnswer.trim();
-    if (!trimmed) {
-      setAnswerError("Please write an answer before submitting.");
+    const validationError = getAnswerValidationError(trimmed);
+    if (validationError) {
+      setAnswerError(validationError);
       return;
     }
 
     try {
       setPostingAnswer(true);
       setAnswerError("");
-      await qaApi.postAnswer(id, { body: trimmed });
+      const res = await qaApi.postAnswer(id, { body: trimmed });
+      const created = res?.answer;
+      if (created?._id) {
+        const createdAnswer = {
+          ...created,
+          authorId: currentUser
+            ? {
+                _id: currentUser.id,
+                firstName: currentUser.firstName,
+                lastName: currentUser.lastName,
+                fullName: currentUser.fullName,
+                name: currentUser.name,
+              }
+            : created.authorId,
+          replies: [],
+          likedByMe: false,
+          dislikedByMe: false,
+          myVote: 0,
+          voteScore: created.voteScore ?? 0,
+          dislikeCount: created.dislikeCount ?? 0,
+        };
+        setAnswers((prev) => [createdAnswer, ...prev]);
+      }
       setNewAnswer("");
-      await load();
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) {
@@ -285,12 +336,39 @@ function QuestionDetailsPage() {
     const el = replyTextareasRef.current?.[key];
     const text = el?.value || "";
     const trimmed = text.trim();
-    if (!trimmed) return;
+    const validationError = getAnswerValidationError(trimmed);
+    if (validationError) {
+      setReplyErrors((prev) => ({ ...prev, [key]: validationError }));
+      return;
+    }
 
     try {
-      await qaApi.postAnswer(id, { body: trimmed, parentAnswerId });
+      setReplyErrors((prev) => ({ ...prev, [key]: "" }));
+      setError("");
+      const res = await qaApi.postAnswer(id, { body: trimmed, parentAnswerId });
+      const created = res?.answer;
+      if (created?._id) {
+        const createdReply = {
+          ...created,
+          authorId: currentUser
+            ? {
+                _id: currentUser.id,
+                firstName: currentUser.firstName,
+                lastName: currentUser.lastName,
+                fullName: currentUser.fullName,
+                name: currentUser.name,
+              }
+            : created.authorId,
+          replies: [],
+          likedByMe: false,
+          dislikedByMe: false,
+          myVote: 0,
+          voteScore: created.voteScore ?? 0,
+          dislikeCount: created.dislikeCount ?? 0,
+        };
+        setAnswers((prev) => insertReplyInTree(prev, parentAnswerId, createdReply));
+      }
       if (el) el.value = "";
-      await load();
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Reply failed");
     }
@@ -383,11 +461,25 @@ function QuestionDetailsPage() {
             <textarea
               className="w-full border rounded-md px-3 py-2 min-h-20"
               placeholder="Write a reply"
+              maxLength={ANSWER_MAX_LENGTH}
+              onChange={() => {
+                const replyKey = String(answer._id);
+                if (replyErrors[replyKey]) {
+                  setReplyErrors((prev) => ({ ...prev, [replyKey]: "" }));
+                }
+              }}
               ref={(el) => {
                 if (!el) return;
                 replyTextareasRef.current[String(answer._id)] = el;
               }}
             />
+            <p className="text-xs text-slate-500 mt-1">
+              Minimum {ANSWER_MIN_LENGTH} character{ANSWER_MIN_LENGTH > 1 ? "s" : ""} ·
+              {" "}Maximum {ANSWER_MAX_LENGTH} characters
+            </p>
+            {replyErrors[String(answer._id)] && (
+              <p className="text-red-500 text-sm mt-1">{replyErrors[String(answer._id)]}</p>
+            )}
             <div className="flex gap-2 mt-2">
               <button
                 type="button"
@@ -521,12 +613,16 @@ function QuestionDetailsPage() {
           <textarea
             className="w-full border rounded-md px-3 py-2 min-h-28"
             value={newAnswer}
+            maxLength={ANSWER_MAX_LENGTH}
             onChange={(e) => {
               setNewAnswer(e.target.value);
               if (answerError) setAnswerError("");
             }}
             placeholder="Write your answer"
           />
+          <p className="text-xs text-slate-500">
+            Minimum {ANSWER_MIN_LENGTH} characters · {newAnswer.trim().length}/{ANSWER_MAX_LENGTH}
+          </p>
           {answerError && <p className="text-red-500 text-sm">{answerError}</p>}
           <button
             type="submit"
