@@ -155,8 +155,8 @@ const DashboardPage = () => {
       title: "Reputation points",
       value: dashboardData.stats.reputationPoints,
       growth: "Live score",
-      icon: <Users size={34} className="text-azureBlue" />,
-      bg: "bg-azureBlue/15",
+      icon: <Users size={24} className="text-blue-600" />,
+      bg: "bg-blue-100",
     },
     {
       title: "My Questions",
@@ -235,7 +235,7 @@ const DashboardPage = () => {
                 key={index}
                 className="flex items-center justify-between rounded-[28px] border border-border/80 bg-card px-6 py-7 shadow-card"
               >
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-3.5">
                   <div
                     className={`flex h-20 w-20 items-center justify-center rounded-full ring-2 ring-white ${item.bg}`}
                   >
@@ -269,31 +269,31 @@ const DashboardPage = () => {
                         />
                       </svg>
                     </div>
-                    <div className="mt-3 flex -space-x-2">
+                    <div className="mt-2 flex -space-x-1.5">
                       <img
                         src="https://i.pravatar.cc/40?img=1"
                         alt="user1"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=2"
                         alt="user2"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=3"
                         alt="user3"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=4"
                         alt="user4"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=5"
                         alt="user5"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                     </div>
                   </div>
@@ -369,7 +369,7 @@ const DashboardPage = () => {
                         key={rowKey}
                         className="border-b border-border text-[15px] text-foreground/90 last:border-b-0"
                       >
-                        <td className="max-w-[220px] px-6 py-5">
+                        <td className="max-w-[200px] px-4 py-3">
                           <Link
                             to={`/questions/${row.questionId}`}
                             className="font-medium text-azureBlue transition hover:text-deepNavy hover:underline"
@@ -386,7 +386,7 @@ const DashboardPage = () => {
                             {row.upvotes ?? 0}
                           </span>
                         </td>
-                        <td className="px-6 py-5">
+                        <td className="px-4 py-3">
                           {row.isBestAnswer ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-azureBlue/12 px-3 py-1 text-sm font-semibold text-deepNavy">
                               <Check size={16} strokeWidth={3} className="text-azureBlue" />
@@ -429,7 +429,7 @@ const DashboardPage = () => {
               </table>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-1.5">
               <button
                 type="button"
                 disabled={answersPage <= 1}
@@ -437,7 +437,7 @@ const DashboardPage = () => {
                 className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-azureBlue/40 hover:text-azureBlue disabled:opacity-40"
                 aria-label="Previous page"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={17} />
               </button>
               <span className="flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg bg-azureBlue/12 text-sm font-bold text-azureBlue ring-1 ring-azureBlue/20">
                 {answersPage}
@@ -449,7 +449,7 @@ const DashboardPage = () => {
                 className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-azureBlue/40 hover:text-azureBlue disabled:opacity-40"
                 aria-label="Next page"
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={17} />
               </button>
             </div>
           </div>

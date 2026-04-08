@@ -8,10 +8,20 @@ import {
   MessageSquare,
   Settings,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 
 const menuItems = [
   { label: "Dashboard", to: "/dashboard/user", icon: LayoutDashboard },
@@ -24,13 +34,26 @@ const menuItems = [
 ];
 
 export function UserDashboardShell({ children }) {
-  const { auth } = useAuth();
   const location = useLocation();
   const tabParam = new URLSearchParams(location.search).get("tab");
   const onUserDashboardHome = location.pathname === "/dashboard/user";
   const notificationsTab = onUserDashboardHome && tabParam === "notifications";
   const settingsTab = onUserDashboardHome && tabParam === "settings";
+  const { auth, logout } = useAuth();
+  const navigate = useNavigate();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  const confirmLogout = async () => {
+    setLogoutDialogOpen(false);
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      /* ignore */
+    }
+    logout();
+    navigate("/");
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -50,8 +73,8 @@ export function UserDashboardShell({ children }) {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-r from-fuchsia-300 via-purple-500 to-indigo-700 p-0">
-      <div className="mx-auto flex min-h-screen w-full max-w-none overflow-hidden rounded-none bg-[#f4f5fb] shadow-[0_8px_40px_rgba(62,24,136,0.2)]">
-        <aside className="flex w-[300px] shrink-0 flex-col justify-between border-r border-[#f9bf3b]/30 bg-[#fffef8] px-5 py-8">
+      <div className="mx-auto flex min-h-screen w-full max-w-none overflow-hidden rounded-none bg-[#f4f5fb] shadow-[0_6px_28px_rgba(62,24,136,0.16)]">
+        <aside className="flex w-[232px] shrink-0 flex-col justify-between border-r border-[#f9bf3b]/30 bg-[#fffef8] px-3.5 py-5 lg:w-[240px]">
           <div>
             <Link
               to="/home"
@@ -87,7 +110,7 @@ export function UserDashboardShell({ children }) {
               </div>
             </Link>
 
-            <nav className="space-y-3">
+            <nav className="space-y-1.5">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isDashboardItem = item.to === "/dashboard/user";
@@ -115,16 +138,16 @@ export function UserDashboardShell({ children }) {
                       }`;
                     }}
                   >
-                    <div className="flex items-center gap-3 font-medium">
-                      <Icon size={20} />
+                    <div className="flex items-center gap-2.5 font-medium">
+                      <Icon size={17} strokeWidth={2} />
                       {item.label}
                     </div>
                     {item.label === "Notifications" ? (
-                      <span className="rounded-lg bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                      <span className="rounded-md bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                         {unreadNotifications}
                       </span>
                     ) : (
-                      <ChevronRight size={18} />
+                      <ChevronRight size={15} className="shrink-0 opacity-60" />
                     )}
                   </NavLink>
                 );
@@ -132,12 +155,48 @@ export function UserDashboardShell({ children }) {
             </nav>
           </div>
 
-          <div className="px-4 text-3xl font-semibold tracking-wide text-[#343e43]/80">
-            SLIIT Forum
+          <div className="flex flex-col gap-2 px-1">
+            
+            <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+              <button
+                type="button"
+                onClick={() => setLogoutDialogOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#343e43]/20 bg-white px-3 py-2 text-xs font-semibold text-[#343e43] shadow-sm transition hover:bg-[#f9bf3b]/15"
+              >
+                <LogOut size={15} />
+                Logout
+              </button>
+              <DialogContent className="max-w-[360px] rounded-2xl border border-[#e2e8f0] bg-white p-5 text-[#343e43] shadow-xl sm:rounded-2xl [&>button]:text-[#6b7280] [&>button]:hover:text-[#343e43]">
+                <DialogHeader>
+                  <DialogTitle className="text-left text-base font-bold text-[#111827]">
+                    Log out
+                  </DialogTitle>
+                  <DialogDescription className="text-left text-sm text-[#4b5563]">
+                    Are you sure you want to logout?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="mt-2 gap-2 sm:gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-[#d1d5db] bg-white px-3 text-xs font-semibold text-[#374151] transition hover:bg-[#f9fafb] sm:flex-initial"
+                    onClick={() => setLogoutDialogOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-[#f9bf3b] px-3 text-xs font-bold text-[#343e43] transition hover:brightness-95 sm:flex-initial"
+                    onClick={confirmLogout}
+                  >
+                    OK
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </aside>
 
-        <main className="min-h-screen min-w-0 flex-1 overflow-y-auto px-6 py-8 md:px-10">{children}</main>
+        <main className="min-h-screen min-w-0 flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">{children}</main>
       </div>
     </div>
   );
