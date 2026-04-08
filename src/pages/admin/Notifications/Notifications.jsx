@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react"
-import { BellPlus, RefreshCw, Send, Filter, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { BellPlus, RefreshCw, Send, Filter, ChevronLeft, ChevronRight, X, FlaskConical } from "lucide-react"
 import { toast } from "sonner"
 
 import { useAuth } from "../../../context/AuthContext"
@@ -20,6 +20,7 @@ import {
   markAsUnread,
   deleteNotification 
 } from "../../../services/notificationService"
+import { getAdminDemoNotificationScenarios } from "../../../lib/adminDemoNotifications"
 
 const NOTIFICATION_TYPES = [
   { value: "all", label: "All Types" },
@@ -84,7 +85,16 @@ export function Notifications() {
   const [newTitle, setNewTitle] = useState("")
   const [newEntityType, setNewEntityType] = useState("system")
   const [newEntityId, setNewEntityId] = useState("")
+  const [newQuestionId, setNewQuestionId] = useState("")
+  const [newAnswerId, setNewAnswerId] = useState("")
   const [newMessage, setNewMessage] = useState("")
+  const [demoSeeding, setDemoSeeding] = useState(false)
+  const [presentationDemoKey, setPresentationDemoKey] = useState(0)
+
+  const demoScenarios = useMemo(
+    () => getAdminDemoNotificationScenarios({ staffEmail: adminEmail || "admin@example.com" }),
+    [adminEmail]
+  )
 
   const fetchNotifications = useCallback(async (currentPage = page) => {
     setLoading(true)
@@ -176,6 +186,8 @@ export function Notifications() {
     const message = newMessage.trim()
     const entityType = newEntityType.trim()
     const entityId = newEntityId.trim()
+    const questionId = (newQuestionId || "").trim()
+    const answerId = (newAnswerId || "").trim()
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const allowedTypes = new Set(["announcement", "answer", "comment", "best_answer", "report_update"])
@@ -198,11 +210,72 @@ export function Notifications() {
     else if (entityType.length > 80) errors.entityType = "Entity type must be at most 80 characters"
 
     if (entityId && entityId.length > 200) errors.entityId = "Entity ID must be at most 200 characters"
+    if (questionId.length > 200) errors.questionId = "Question ID must be at most 200 characters"
+    if (answerId.length > 200) errors.answerId = "Answer ID must be at most 200 characters"
 
     return {
       valid: Object.keys(errors).length === 0,
       errors,
-      normalized: { email, title, message, entityType, entityId: entityId || undefined },
+      normalized: {
+        email,
+        title,
+        message,
+        entityType,
+        entityId: entityId || undefined,
+        questionId: questionId || undefined,
+        answerId: answerId || undefined,
+      },
+    }
+  }
+
+  const applyDemoScenarioToForm = (index) => {
+    const scenario = demoScenarios[index]
+    if (!scenario?.payload) return
+    const p = scenario.payload
+    setNewEmail(p.email)
+    setNewType(p.type)
+    setNewTitle(p.title)
+    setNewMessage(p.message)
+    setNewEntityType(p.entityType)
+    setNewEntityId(p.entityId != null ? String(p.entityId) : "")
+    setNewQuestionId(p.questionId != null ? String(p.questionId) : "")
+    setNewAnswerId(p.answerId != null ? String(p.answerId) : "")
+    setShowValidation(false)
+    setFormErrors({})
+    toast.message("Demo scenario applied", { description: scenario.label })
+  }
+
+  const handleQueueDemoSet = async () => {
+    if (!adminEmail) {
+      toast.error("Sign in as admin to queue demo notifications")
+      return
+    }
+    setDemoSeeding(true)
+    let queued = 0
+    try {
+      for (let i = 0; i < demoScenarios.length; i++) {
+        const payload = demoScenarios[i].payload
+        await createNotification(payload)
+        queued++
+        await new Promise((r) => setTimeout(r, 400))
+      }
+      toast.success(`Queued ${queued} demo notifications`, {
+        description: "Ensure Redis and the notification worker are running so they appear in Sent by me.",
+      })
+      setViewMode("sent")
+      setPage(1)
+      setTimeout(() => fetchNotifications(1), 1200)
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to queue demo notifications"
+      toast.error(msg, {
+        description:
+          queued > 0 ? `${queued} were queued before this error.` : undefined,
+      })
+    } finally {
+      setDemoSeeding(false)
     }
   }
 
@@ -298,6 +371,8 @@ export function Notifications() {
       message: normalized.message,
       entityType: normalized.entityType,
       entityId: normalized.entityId,
+      questionId: normalized.questionId,
+      answerId: normalized.answerId,
     })
     setConfirmSendOpen(true)
   }
@@ -314,6 +389,8 @@ export function Notifications() {
         message: sendDraft.message,
         entityType: sendDraft.entityType,
         entityId: sendDraft.entityId,
+        ...(sendDraft.questionId ? { questionId: sendDraft.questionId } : {}),
+        ...(sendDraft.answerId ? { answerId: sendDraft.answerId } : {}),
       })
 
       toast.success(response.message || "Notification queued for delivery")
@@ -328,6 +405,8 @@ export function Notifications() {
       setNewType("announcement")
       setNewEntityType("system")
       setNewEntityId("")
+      setNewQuestionId("")
+      setNewAnswerId("")
 
       setTimeout(() => {
         setPage(1)
@@ -440,8 +519,23 @@ export function Notifications() {
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 
               {loading ? 'Refreshing' : 'Refresh'}
             </Button>
+            <Button
+              variant="outline"
+              onClick={handleQueueDemoSet}
+              disabled={demoSeeding || !adminEmail}
+              className="flex-1 sm:flex-none border-dashed border-amber-300/80 text-amber-950 bg-amber-50/50 hover:bg-amber-100/80"
+              title="Enqueues ten sample notifications (Redis + worker required)"
+            >
+              <FlaskConical className={`mr-2 h-4 w-4 ${demoSeeding ? "animate-pulse" : ""}`} />
+              {demoSeeding ? "Queuing demos…" : "Queue demo set (10)"}
+            </Button>
             <Button 
-              onClick={() => { setOpenDrawer(true); setShowValidation(false); setFormErrors({}) }} 
+              onClick={() => {
+                setPresentationDemoKey((k) => k + 1)
+                setOpenDrawer(true)
+                setShowValidation(false)
+                setFormErrors({})
+              }} 
               className="flex-1 sm:flex-none shadow-md bg-[#f9bf3b] hover:bg-[#e0a92f] text-black transition-all hover:scale-105"
             >
               <Send className="mr-2 h-4 w-4" /> Broadcast
@@ -642,8 +736,15 @@ export function Notifications() {
         setNewEntityType={setNewEntityType}
         newEntityId={newEntityId}
         setNewEntityId={setNewEntityId}
+        newQuestionId={newQuestionId}
+        setNewQuestionId={setNewQuestionId}
+        newAnswerId={newAnswerId}
+        setNewAnswerId={setNewAnswerId}
         newMessage={newMessage}
         setNewMessage={setNewMessage}
+        demoScenarios={demoScenarios}
+        onApplyDemoScenario={applyDemoScenarioToForm}
+        presentationDemoKey={presentationDemoKey}
       />
     </div>
   )
