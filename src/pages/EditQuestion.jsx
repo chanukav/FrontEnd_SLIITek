@@ -74,7 +74,7 @@ export default function EditQuestionPage() {
         body: nextBody,
         category: nextCategory,
       });
-      navigate(`/questions/${id}`, { replace: true });
+      navigate("/home", { replace: true });
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) {
