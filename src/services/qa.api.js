@@ -28,6 +28,8 @@ const unwrap = (response) => response.data;
 
 export const qaApi = {
   getQuestions: async () => unwrap(await api.get("/questions")),
+  getMyQuestions: async () => unwrap(await api.get("/questions/me", withAuth())),
+  getMyAnswers: async () => unwrap(await api.get("/answers/me", withAuth())),
   searchQuestions: async (q, { category, status, page, limit } = {}) =>
     unwrap(
       await api.get("/questions/search", {
