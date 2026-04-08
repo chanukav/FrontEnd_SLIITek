@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FiChevronRight, FiChevronDown } from "react-icons/fi";
 import { qaApi } from "../services/qa.api";
 import { API_ORIGIN } from "../lib/api";
 import { ImageDropZone } from "../components/ImageDropZone";
@@ -18,6 +19,12 @@ const questionThumbSrc = (img) => {
   return `${API_ORIGIN}/${u}`;
 };
 
+const authorIdString = (author) => {
+  if (author == null) return "";
+  const id = typeof author === "object" ? author._id : author;
+  return id != null ? String(id) : "";
+};
+
 function QuestionsPage() {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
@@ -33,6 +40,10 @@ function QuestionsPage() {
   const [posting, setPosting] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [myQuestions, setMyQuestions] = useState([]);
+  const [myAnswers, setMyAnswers] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const categories = [
     "Academic",
@@ -51,6 +62,7 @@ function QuestionsPage() {
       return {};
     }
   })();
+  const viewerId = auth?.user?.id ?? auth?.user?._id;
 
   const loadQuestions = async () => {
     setLoading(true);
@@ -65,9 +77,32 @@ function QuestionsPage() {
     }
   };
 
+  const loadMyHistory = async () => {
+    if (!auth?.token) return;
+    setHistoryLoading(true);
+    try {
+      const [mq, ma] = await Promise.all([
+        qaApi.getMyQuestions(),
+        qaApi.getMyAnswers(),
+      ]);
+      setMyQuestions(Array.isArray(mq) ? mq : []);
+      setMyAnswers(Array.isArray(ma) ? ma : []);
+    } catch {
+      setMyQuestions([]);
+      setMyAnswers([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadQuestions();
   }, []);
+
+  useEffect(() => {
+    if (!historyOpen || !auth?.token) return;
+    loadMyHistory();
+  }, [historyOpen]);
 
   const submitSearch = async (e) => {
     e.preventDefault();
@@ -134,6 +169,7 @@ function QuestionsPage() {
       setTagsInput("");
       setImageFiles([]);
       await loadQuestions();
+      await loadMyHistory();
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) {
@@ -151,6 +187,103 @@ function QuestionsPage() {
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="bg-white rounded-xl shadow p-5">
         <h2 className="text-lg font-semibold mb-3">Ask a Question</h2>
+
+        {auth?.token && (
+          <div className="mb-5 max-w-3xl rounded-lg border border-slate-200 bg-slate-50/80 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((o) => !o)}
+              aria-expanded={historyOpen}
+              aria-controls="questions-page-qa-history-panel"
+              id="questions-page-qa-history-toggle"
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left text-sm font-semibold text-slate-800 bg-transparent border-none cursor-pointer font-[inherit] hover:bg-slate-100/80 transition-colors"
+            >
+              <span>Q&amp;A history</span>
+              <span className="text-slate-500 flex-shrink-0" aria-hidden>
+                {historyOpen ? <FiChevronDown size={20} /> : <FiChevronRight size={20} />}
+              </span>
+            </button>
+            {historyOpen && (
+              <div
+                id="questions-page-qa-history-panel"
+                role="region"
+                aria-labelledby="questions-page-qa-history-toggle"
+                className="px-4 pb-4 border-t border-slate-200"
+              >
+                {historyLoading ? (
+                  <p className="text-sm text-slate-500 pt-3">Loading your history…</p>
+                ) : !myQuestions.length && !myAnswers.length ? (
+                  <p className="text-sm text-slate-600 pt-3">
+                    You have not posted any questions or answers yet. They will appear here.
+                  </p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 pt-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                        Your questions
+                      </p>
+                      <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {myQuestions.length === 0 ? (
+                          <li className="text-sm text-slate-500">None yet.</li>
+                        ) : (
+                          myQuestions.map((q) => (
+                            <li key={q._id}>
+                              <Link
+                                to={`/questions/${q._id}`}
+                                className="text-sm font-medium text-blue-700 hover:underline line-clamp-2"
+                              >
+                                {q.title}
+                              </Link>
+                              <div className="flex flex-wrap gap-2 mt-0.5 text-xs text-slate-500">
+                                <span>{q.answerCount ?? 0} answers</span>
+                                {q.status && <span className="capitalize">{q.status}</span>}
+                              </div>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                        Your answers
+                      </p>
+                      <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {myAnswers.length === 0 ? (
+                          <li className="text-sm text-slate-500">None yet.</li>
+                        ) : (
+                          myAnswers.map((a) => {
+                            const qRef = a.questionId;
+                            const qid =
+                              qRef && typeof qRef === "object" ? qRef._id : qRef;
+                            const qTitle =
+                              qRef && typeof qRef === "object" ? qRef.title : "Question";
+                            if (!qid) return null;
+                            const preview =
+                              (a.body || "").length > 140
+                                ? `${(a.body || "").slice(0, 140)}…`
+                                : a.body || "";
+                            return (
+                              <li key={a._id}>
+                                <Link
+                                  to={`/questions/${qid}`}
+                                  className="text-sm text-blue-700 hover:underline line-clamp-1"
+                                >
+                                  Re: {qTitle}
+                                </Link>
+                                <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{preview}</p>
+                              </li>
+                            );
+                          })
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <form onSubmit={submitQuestion} className="space-y-3 max-w-3xl">
           <div>
             <label htmlFor="q-title" className="block text-sm font-semibold text-slate-700 mb-1">
@@ -279,12 +412,24 @@ function QuestionsPage() {
           <p>Loading...</p>
         ) : (
           <div className="space-y-3">
-            {questions.map((q) => (
+            {questions.map((q) => {
+              const isMine =
+                Boolean(viewerId && authorIdString(q.authorId) === String(viewerId));
+              return (
               <Link
                 key={q._id}
                 to={`/questions/${q._id}`}
-                className="block border rounded-lg p-3 hover:bg-slate-50"
+                className={`block rounded-lg p-3 hover:bg-slate-50 relative border ${
+                  isMine
+                    ? "border-amber-300/80 bg-amber-50/40 border-l-4 border-l-amber-400"
+                    : "border-slate-200"
+                }`}
               >
+                {isMine && (
+                  <span className="absolute top-2 right-2 text-[0.65rem] font-extrabold uppercase tracking-wide text-slate-900 bg-amber-200/90 px-1.5 py-0.5 rounded border border-amber-400/60">
+                    Yours
+                  </span>
+                )}
                 {q.images?.length > 0 && (
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {q.images.slice(0, 3).map((img) => (
@@ -302,9 +447,9 @@ function QuestionsPage() {
                     )}
                   </div>
                 )}
-                <div className="flex items-center justify-between">
+                <div className={`flex items-center justify-between gap-2 ${isMine ? "pr-16" : ""}`}>
                   <h2 className="font-semibold">{q.title}</h2>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {q.category && (
                       <span className="text-xs px-2 py-1 rounded bg-slate-100">
                         {q.category}
@@ -323,10 +468,11 @@ function QuestionsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  Asked by {displayName(q.authorId)}
+                  Asked by {isMine ? "You" : displayName(q.authorId)}
                 </p>
               </Link>
-            ))}
+            );
+            })}
             {!questions.length && <p className="text-slate-600">No questions yet.</p>}
           </div>
         )}
