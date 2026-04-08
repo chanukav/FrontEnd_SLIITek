@@ -7,7 +7,7 @@ import { getUserNotifications, markAsRead, markAllAsRead } from "../../services/
 import { useNotificationSSE } from "../../hooks/useNotificationSSE";
 import HomeHeader from "../../components/home/HomeHeader";
 import HomeSidebar from "../../components/home/HomeSidebar";
-import { FiAlertTriangle, FiSearch, FiInbox, FiAlertCircle, FiBell, FiUsers, FiHelpCircle, FiCheckCircle } from "react-icons/fi";
+import { FiAlertTriangle, FiSearch, FiInbox, FiAlertCircle, FiBell, FiUsers, FiHelpCircle, FiCheckCircle, FiChevronRight, FiChevronDown } from "react-icons/fi";
 import { BsLightbulb } from "react-icons/bs";
 import { ImageDropZone } from "../../components/ImageDropZone";
 
@@ -34,18 +34,32 @@ const questionThumbSrc = (img) => {
   return `${API_ORIGIN}/${u}`;
 };
 
+/** Stable string id for question author (populated or raw ObjectId). */
+const authorIdString = (author) => {
+  if (author == null) return "";
+  const id = typeof author === "object" ? author._id : author;
+  return id != null ? String(id) : "";
+};
+
 /* ─── Question Card ──────────────────────────────────────── */
-function QuestionCard({ q }) {
+function QuestionCard({ q, currentUserId }) {
+  const isMine = Boolean(
+    currentUserId && authorIdString(q.authorId) && authorIdString(q.authorId) === String(currentUserId)
+  );
+
   return (
     <Link
       to={`/questions/${q._id}`}
       style={{
-        display: "block", background: "var(--color-card)",
-        border: "1px solid var(--color-border)", borderRadius: "14px",
+        display: "block",
+        background: isMine ? "linear-gradient(135deg, rgba(249,191,59,0.07) 0%, var(--color-card) 55%)" : "var(--color-card)",
+        border: `1px solid ${isMine ? "rgba(249,191,59,0.45)" : "var(--color-border)"}`,
+        borderLeft: isMine ? "4px solid var(--color-amberGold)" : undefined,
+        borderRadius: "14px",
         padding: "1.25rem 1.5rem",
         textDecoration: "none", color: "inherit",
         transition: "all 0.2s cubic-bezier(0.16,1,0.3,1)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+        boxShadow: isMine ? "0 2px 12px rgba(249,191,59,0.12)" : "0 2px 8px rgba(0,0,0,0.02)",
         position: "relative", overflow: "hidden"
       }}
       onMouseOver={(e) => {
@@ -54,13 +68,33 @@ function QuestionCard({ q }) {
         e.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
-        e.currentTarget.style.borderColor = "var(--color-border)";
+        e.currentTarget.style.boxShadow = isMine ? "0 2px 12px rgba(249,191,59,0.12)" : "0 2px 8px rgba(0,0,0,0.02)";
+        e.currentTarget.style.borderColor = isMine ? "rgba(249,191,59,0.45)" : "var(--color-border)";
         e.currentTarget.style.transform = "none";
       }}
     >
+      {isMine && (
+        <span
+          style={{
+            position: "absolute",
+            top: "0.85rem",
+            right: "1rem",
+            fontSize: "0.65rem",
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--color-deepNavy)",
+            background: "rgba(249,191,59,0.35)",
+            padding: "0.2rem 0.55rem",
+            borderRadius: "6px",
+            border: "1px solid rgba(249,191,59,0.5)",
+          }}
+        >
+          Yours
+        </span>
+      )}
       {/* Title */}
-      <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--color-deepNavy)", marginBottom: "0.5rem", lineHeight: 1.4, letterSpacing: "-0.01em" }}>
+      <h3 style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--color-deepNavy)", marginBottom: "0.5rem", lineHeight: 1.4, letterSpacing: "-0.01em", paddingRight: isMine ? "4.5rem" : 0 }}>
         {q.title}
       </h3>
 
@@ -159,14 +193,19 @@ function QuestionCard({ q }) {
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
           <div style={{
             width: 26, height: 26, borderRadius: "50%",
-            background: "var(--color-amberGold)",
+            background: isMine ? "linear-gradient(145deg, #fde68a, var(--color-amberGold))" : "var(--color-amberGold)",
+            boxShadow: isMine ? "0 0 0 2px rgba(249,191,59,0.35)" : "none",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "0.75rem", fontWeight: 800, color: "var(--color-deepNavy)",
           }}>
             {displayName(q.authorId)?.[0]?.toUpperCase() || "?"}
           </div>
           <span style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500 }}>
-            <span style={{ color: "var(--color-deepNavy)", fontWeight: 600 }}>{displayName(q.authorId)}</span> · {timeAgo(q.createdAt)}
+            <span style={{ color: "var(--color-deepNavy)", fontWeight: 600 }}>
+              {isMine ? "You" : displayName(q.authorId)}
+            </span>
+            {" · "}
+            {timeAgo(q.createdAt)}
           </span>
         </div>
       </div>
@@ -178,10 +217,11 @@ function QuestionCard({ q }) {
 function QuestionFeed({ searchQuery, activeTag }) {
   const navigate = useNavigate();
   const { auth } = useAuth();
+  const viewerId = auth?.user?.id ?? auth?.user?._id;
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("newest"); // newest | unanswered | popular
+  const [filter, setFilter] = useState("newest"); // newest | unanswered | popular | mine
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -215,8 +255,14 @@ function QuestionFeed({ searchQuery, activeTag }) {
     );
   }
 
+  if (filter === "mine") {
+    displayed = viewerId
+      ? displayed.filter((x) => authorIdString(x.authorId) === String(viewerId))
+      : [];
+  }
+
   if (filter === "unanswered") displayed = displayed.filter((x) => (x.answers?.length ?? x.answerCount ?? 0) === 0);
-  if (filter === "popular")    displayed = [...displayed].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0));
+  if (filter === "popular")    displayed = [...displayed].sort((a, b) => (b.voteScore ?? b.votes ?? 0) - (a.voteScore ?? a.votes ?? 0));
   if (filter === "newest")     displayed = [...displayed].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
@@ -225,14 +271,20 @@ function QuestionFeed({ searchQuery, activeTag }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h1 style={{ fontWeight: 800, fontSize: "1.5rem", color: "var(--color-deepNavy)" }}>
-            {activeTag ? `#${activeTag}` : searchQuery ? `Results for "${searchQuery}"` : "All Questions"}
+            {filter === "mine"
+              ? "Your questions"
+              : activeTag
+                ? `#${activeTag}`
+                : searchQuery
+                  ? `Results for "${searchQuery}"`
+                  : "All Questions"}
           </h1>
           <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)", marginTop: "0.25rem" }}>
             {displayed.length} question{displayed.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", background: "var(--color-muted)", padding: "0.3rem", borderRadius: "10px" }}>
-          {["newest", "popular", "unanswered"].map((f) => (
+        <div style={{ display: "flex", gap: "0.5rem", background: "var(--color-muted)", padding: "0.3rem", borderRadius: "10px", flexWrap: "wrap" }}>
+          {["newest", "popular", "unanswered", ...(auth?.token && viewerId ? ["mine"] : [])].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -242,11 +294,11 @@ function QuestionFeed({ searchQuery, activeTag }) {
                 color: filter === f ? "var(--color-deepNavy)" : "var(--color-muted-foreground)",
                 fontWeight: filter === f ? 700 : 600,
                 fontSize: "0.85rem", padding: "0.45rem 1rem",
-                borderRadius: "7px", textTransform: "capitalize",
+                borderRadius: "7px", textTransform: f === "mine" ? "none" : "capitalize",
                 transition: "all 0.2s",
                 boxShadow: filter === f ? "0 2px 8px rgba(0,0,0,0.05)" : "none"
               }}
-            >{f}</button>
+            >{f === "mine" ? "My posts" : f}</button>
           ))}
         </div>
       </div>
@@ -318,12 +370,18 @@ function QuestionFeed({ searchQuery, activeTag }) {
           <div style={{ fontSize: "3rem", marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}><FiSearch size={48} /></div>
           <p style={{ fontWeight: 700, fontSize: "1.05rem", color: "#475569" }}>No questions found</p>
           <p style={{ fontSize: "0.875rem", marginTop: "0.4rem" }}>
-            {searchQuery ? "Try a different search term." : "Be the first to ask!"}
+            {filter === "mine"
+              ? "You have not posted any questions yet. Ask one to see it here."
+              : searchQuery
+                ? "Try a different search term."
+                : "Be the first to ask!"}
           </p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {displayed.map((q) => <QuestionCard key={q._id} q={q} />)}
+          {displayed.map((q) => (
+            <QuestionCard key={q._id} q={q} currentUserId={viewerId} />
+          ))}
         </div>
       )}
     </div>
@@ -341,6 +399,10 @@ function AskQuestion() {
   const [imageFiles, setImageFiles] = useState([]);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+  const [myQuestions, setMyQuestions] = useState([]);
+  const [myAnswers, setMyAnswers] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const categories = [
     "Academic",
@@ -351,6 +413,32 @@ function AskQuestion() {
     "Clubs & Events",
     "General / Other",
   ];
+
+  useEffect(() => {
+    if (!auth?.token || !historyOpen) return;
+    let cancelled = false;
+    (async () => {
+      setHistoryLoading(true);
+      try {
+        const [mq, ma] = await Promise.all([
+          qaApi.getMyQuestions(),
+          qaApi.getMyAnswers(),
+        ]);
+        if (!cancelled) {
+          setMyQuestions(Array.isArray(mq) ? mq : []);
+          setMyAnswers(Array.isArray(ma) ? ma : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setMyQuestions([]);
+          setMyAnswers([]);
+        }
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [auth?.token, historyOpen]);
 
   if (!auth?.token) return <Navigate to="/login" replace />;
 
@@ -376,6 +464,111 @@ function AskQuestion() {
   return (
     <div style={{ maxWidth: 720 }}>
       <h1 style={{ fontWeight: 800, fontSize: "1.4rem", color: "#0f172a", marginBottom: "1.5rem" }}>Ask a Question</h1>
+      <div
+        style={{
+          marginBottom: "1.25rem",
+          borderRadius: "12px",
+          border: "1px solid #e2e8f0",
+          background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setHistoryOpen((o) => !o)}
+          aria-expanded={historyOpen}
+          aria-controls="ask-qa-history-panel"
+          id="ask-qa-history-toggle"
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "0.75rem",
+            padding: "0.85rem 1.1rem",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            fontWeight: 700,
+            color: "#0f172a",
+            textAlign: "left",
+            fontFamily: "inherit",
+          }}
+        >
+          <span>Q&amp;A history</span>
+          <span style={{ display: "flex", color: "#64748b", flexShrink: 0 }}>
+            {historyOpen ? <FiChevronDown size={20} aria-hidden /> : <FiChevronRight size={20} aria-hidden />}
+          </span>
+        </button>
+        {historyOpen && (
+          <div
+            id="ask-qa-history-panel"
+            role="region"
+            aria-labelledby="ask-qa-history-toggle"
+            style={{ padding: "0 1.1rem 1rem", borderTop: "1px solid #e2e8f0" }}
+          >
+            {historyLoading ? (
+              <p style={{ margin: "0.75rem 0 0", fontSize: "0.875rem", color: "#64748b" }}>Loading your history…</p>
+            ) : !myQuestions.length && !myAnswers.length ? (
+              <p style={{ margin: "0.75rem 0 0", fontSize: "0.875rem", color: "#475569" }}>
+                You have not posted any questions or answers yet. They will appear here.
+              </p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem", marginTop: "0.75rem" }}>
+                <div>
+                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.06em", color: "#64748b", textTransform: "uppercase" }}>
+                    Your questions
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: "1.1rem", maxHeight: "12rem", overflowY: "auto" }}>
+                    {myQuestions.length === 0 ? (
+                      <li style={{ fontSize: "0.875rem", color: "#64748b" }}>None yet.</li>
+                    ) : (
+                      myQuestions.map((q) => (
+                        <li key={q._id} style={{ marginBottom: "0.6rem" }}>
+                          <Link to={`/questions/${q._id}`} style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1d4ed8", textDecoration: "none" }}>
+                            {q.title}
+                          </Link>
+                          <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
+                            {q.answerCount ?? 0} answers
+                            {q.status ? ` · ${q.status}` : ""}
+                          </div>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.06em", color: "#64748b", textTransform: "uppercase" }}>
+                    Your answers
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: "1.1rem", maxHeight: "12rem", overflowY: "auto" }}>
+                    {myAnswers.length === 0 ? (
+                      <li style={{ fontSize: "0.875rem", color: "#64748b" }}>None yet.</li>
+                    ) : (
+                      myAnswers.map((a) => {
+                        const qRef = a.questionId;
+                        const qid = qRef && typeof qRef === "object" ? qRef._id : qRef;
+                        const qTitle = qRef && typeof qRef === "object" ? qRef.title : "Question";
+                        if (!qid) return null;
+                        const preview = (a.body || "").length > 140 ? `${(a.body || "").slice(0, 140)}…` : a.body || "";
+                        return (
+                          <li key={a._id} style={{ marginBottom: "0.6rem" }}>
+                            <Link to={`/questions/${qid}`} style={{ fontSize: "0.875rem", color: "#1d4ed8", textDecoration: "none", display: "block" }}>
+                              Re: {qTitle}
+                            </Link>
+                            <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: "#475569", lineHeight: 1.35 }}>{preview}</p>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {error && (
           <div style={{ background: "#fee2e2", color: "#991b1b", borderRadius: "8px", padding: "0.75rem 1rem", fontSize: "0.875rem", border: "1px solid #fecaca" }}>
