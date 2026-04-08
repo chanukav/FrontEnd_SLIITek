@@ -149,21 +149,21 @@ const DashboardPage = () => {
       title: "Reputation points",
       value: dashboardData.stats.reputationPoints,
       growth: "Live score",
-      icon: <Users size={34} className="text-blue-600" />,
+      icon: <Users size={24} className="text-blue-600" />,
       bg: "bg-blue-100",
     },
     {
       title: "My Questions",
       value: dashboardData.stats.myQuestions,
       growth: "Live count",
-      icon: <HelpCircle size={34} className="text-purple-600" />,
+      icon: <HelpCircle size={24} className="text-purple-600" />,
       bg: "bg-purple-100",
     },
     {
       title: "My Answer",
       value: dashboardData.stats.myAnswers,
       growth: "Live count",
-      icon: <Monitor size={34} className="text-emerald-600" />,
+      icon: <Monitor size={24} className="text-emerald-600" />,
       bg: "bg-emerald-100",
     },
   ];
@@ -197,44 +197,44 @@ const DashboardPage = () => {
   return (
     <UserDashboardShell>
           {/* Top Bar */}
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-[28px] font-bold text-[#1f2937]">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-bold text-[#1f2937] sm:text-2xl">
               Hello {dashboardData.profile?.firstName || auth?.user?.name || "User"}{" "}
-              <span className="text-2xl">👋🏻</span>
+              <span className="text-lg sm:text-xl">👋🏻</span>
             </h2>
 
-            <div className="flex h-14 w-[270px] items-center gap-3 rounded-2xl bg-white px-4 shadow-sm">
-              <Search size={20} className="text-gray-400" />
+            <div className="flex h-11 w-full max-w-[240px] items-center gap-2.5 rounded-xl bg-white px-3.5 shadow-sm sm:w-[220px]">
+              <Search size={17} className="shrink-0 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-full bg-transparent text-[15px] outline-none placeholder:text-gray-400"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
               />
             </div>
           </div>
 
           {/* Stats */}
-          {loading && <p className="mb-6 text-sm font-medium text-[#334155]">Loading dashboard...</p>}
-          {error && <p className="mb-6 text-sm font-medium text-red-600">{error}</p>}
-          <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
+          {loading && <p className="mb-4 text-xs font-medium text-[#334155]">Loading dashboard...</p>}
+          {error && <p className="mb-4 text-xs font-medium text-red-600">{error}</p>}
+          <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
             {stats.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between rounded-[28px] bg-white px-6 py-7 shadow-sm"
+                className="flex items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm"
               >
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-3.5">
                   <div
-                    className={`flex h-20 w-20 items-center justify-center rounded-full ${item.bg}`}
+                    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${item.bg}`}
                   >
                     {item.icon}
                   </div>
 
-                  <div>
-                    <p className="text-lg font-medium text-gray-400">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-400">
                       {item.title}
                     </p>
-                    <h3 className="mt-1 text-5xl font-bold text-[#20263a]">{item.value}</h3>
-                    <p className="mt-2 text-base font-semibold text-emerald-500">
+                    <h3 className="mt-0.5 text-3xl font-bold leading-none text-[#20263a]">{item.value}</h3>
+                    <p className="mt-1.5 text-xs font-semibold text-emerald-500">
                       ↑ <span className="font-bold">{item.growth}</span>
                     </p>
                   </div>
@@ -242,7 +242,7 @@ const DashboardPage = () => {
 
                 {index === 2 && (
                   <div className="hidden flex-col items-end justify-between xl:flex">
-                    <div className="h-16 w-28 rounded-xl bg-gradient-to-br from-emerald-50 to-white p-2">
+                    <div className="h-12 w-24 rounded-lg bg-gradient-to-br from-emerald-50 to-white p-1.5">
                       <svg viewBox="0 0 100 40" className="h-full w-full">
                         <polyline
                           fill="none"
@@ -252,31 +252,31 @@ const DashboardPage = () => {
                         />
                       </svg>
                     </div>
-                    <div className="mt-3 flex -space-x-2">
+                    <div className="mt-2 flex -space-x-1.5">
                       <img
                         src="https://i.pravatar.cc/40?img=1"
                         alt="user1"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=2"
                         alt="user2"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=3"
                         alt="user3"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=4"
                         alt="user4"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                       <img
                         src="https://i.pravatar.cc/40?img=5"
                         alt="user5"
-                        className="h-9 w-9 rounded-full border-2 border-white"
+                        className="h-7 w-7 rounded-full border-2 border-white"
                       />
                     </div>
                   </div>
@@ -286,15 +286,15 @@ const DashboardPage = () => {
           </div>
 
           {/* Recent Answers */}
-          <div className="rounded-[30px] bg-white p-8 shadow-sm">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className="text-[24px] font-bold text-[#20263a]">Recent Answers</h3>
+                <h3 className="text-lg font-bold text-[#20263a] sm:text-xl">Recent Answers</h3>
               </div>
 
-              <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                <div className="flex h-14 min-w-[220px] items-center gap-3 rounded-2xl bg-[#f7f7fb] px-4">
-                  <Search size={20} className="text-gray-400" />
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <div className="flex h-11 min-w-[180px] items-center gap-2.5 rounded-xl bg-[#f7f7fb] px-3.5">
+                  <Search size={17} className="shrink-0 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search questions or answers..."
@@ -303,39 +303,39 @@ const DashboardPage = () => {
                       setAnswersSearch(e.target.value);
                       setAnswersPage(1);
                     }}
-                    className="w-full bg-transparent text-[15px] outline-none placeholder:text-gray-400"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
                   />
                 </div>
 
-                <div className="flex h-14 items-center gap-2 rounded-2xl bg-[#f7f7fb] px-4">
-                  <span className="text-sm font-semibold text-[#6b7280]">Best answer</span>
+                <div className="flex h-11 items-center gap-2 rounded-xl bg-[#f7f7fb] px-3.5">
+                  <span className="text-xs font-semibold text-[#6b7280]">Best answer</span>
                   <select
                     value={bestAnswerFilter}
                     onChange={(e) => {
                       setBestAnswerFilter(e.target.value);
                       setAnswersPage(1);
                     }}
-                    className="rounded-lg border-0 bg-transparent text-[15px] font-semibold text-[#30384f] outline-none"
+                    className="rounded-md border-0 bg-transparent text-sm font-semibold text-[#30384f] outline-none"
                   >
                     <option value="all">All</option>
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
                   </select>
-                  <ChevronDown size={18} className="text-[#6b7280]" />
+                  <ChevronDown size={16} className="text-[#6b7280]" />
                 </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-[#edf0f6]">
-              <table className="w-full min-w-[900px] border-collapse">
+            <div className="overflow-x-auto rounded-xl border border-[#edf0f6]">
+              <table className="w-full min-w-[720px] border-collapse">
                 <thead>
                   <tr className="bg-[#f1f5f9] text-left text-[#64748b]">
-                    <th className="px-6 py-4 text-sm font-semibold">Question</th>
-                    <th className="px-6 py-4 text-sm font-semibold">Answer</th>
-                    <th className="px-6 py-4 text-sm font-semibold">Upvotes</th>
-                    <th className="px-6 py-4 text-sm font-semibold">Best Answer</th>
-                    <th className="px-6 py-4 text-sm font-semibold">Date</th>
-                    <th className="px-6 py-4 text-sm font-semibold"> </th>
+                    <th className="px-4 py-2.5 text-xs font-semibold">Question</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold">Answer</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold">Upvotes</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold">Best Answer</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold">Date</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold"> </th>
                   </tr>
                 </thead>
 
@@ -349,9 +349,9 @@ const DashboardPage = () => {
                     return (
                       <tr
                         key={rowKey}
-                        className="border-b border-[#edf0f6] text-[15px] text-[#334155] last:border-b-0"
+                        className="border-b border-[#edf0f6] text-sm text-[#334155] last:border-b-0"
                       >
-                        <td className="max-w-[220px] px-6 py-5">
+                        <td className="max-w-[200px] px-4 py-3">
                           <Link
                             to={`/questions/${row.questionId}`}
                             className="font-medium text-[#4f46e5] hover:underline"
@@ -359,30 +359,30 @@ const DashboardPage = () => {
                             {row.questionTitle}
                           </Link>
                         </td>
-                        <td className="max-w-[280px] px-6 py-5 text-[#475569]">
+                        <td className="max-w-[240px] px-4 py-3 text-[#475569]">
                           {row.answerSnippet}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-5">
-                          <span className="inline-flex items-center gap-1.5 font-semibold text-[#ca8a04]">
-                            <Star size={18} className="fill-amber-400 text-amber-400" />
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <span className="inline-flex items-center gap-1 font-semibold text-[#ca8a04]">
+                            <Star size={15} className="fill-amber-400 text-amber-400" />
                             {row.upvotes ?? 0}
                           </span>
                         </td>
-                        <td className="px-6 py-5">
+                        <td className="px-4 py-3">
                           {row.isBestAnswer ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
-                              <Check size={16} strokeWidth={3} />
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                              <Check size={14} strokeWidth={3} />
                               Yes
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
-                              <MoreHorizontal size={16} />
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+                              <MoreHorizontal size={14} />
                               No
                             </span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-5 text-[#64748b]">{dateStr}</td>
-                        <td className="px-6 py-5">
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-[#64748b]">{dateStr}</td>
+                        <td className="px-4 py-3">
                           <button
                             type="button"
                             onClick={() =>
@@ -392,7 +392,7 @@ const DashboardPage = () => {
                                 fullAnswer: row.fullAnswer || row.answerSnippet || "",
                               })
                             }
-                            className="rounded-xl bg-[#f9bf3b] px-4 py-2 text-sm font-bold text-[#343e43] transition hover:brightness-95"
+                            className="rounded-lg bg-[#f9bf3b] px-3 py-1.5 text-xs font-bold text-[#343e43] transition hover:brightness-95"
                           >
                             View full answer
                           </button>
@@ -402,7 +402,7 @@ const DashboardPage = () => {
                   })}
                   {!paginatedAnswers.length && (
                     <tr>
-                      <td className="px-6 py-8 text-center text-[#64748b]" colSpan={6}>
+                      <td className="px-4 py-6 text-center text-sm text-[#64748b]" colSpan={6}>
                         No answers match your search or filter.
                       </td>
                     </tr>
@@ -411,27 +411,27 @@ const DashboardPage = () => {
               </table>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-1.5">
               <button
                 type="button"
                 disabled={answersPage <= 1}
                 onClick={() => setAnswersPage((p) => Math.max(1, p - 1))}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#64748b] disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[#e2e8f0] bg-white text-[#64748b] disabled:opacity-40"
                 aria-label="Previous page"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={17} />
               </button>
-              <span className="flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg bg-[#dbeafe] text-sm font-bold text-[#2563eb]">
+              <span className="flex h-8 min-w-[2rem] items-center justify-center rounded-md bg-[#dbeafe] text-xs font-bold text-[#2563eb]">
                 {answersPage}
               </span>
               <button
                 type="button"
                 disabled={answersPage >= totalAnswerPages}
                 onClick={() => setAnswersPage((p) => Math.min(totalAnswerPages, p + 1))}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#64748b] disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[#e2e8f0] bg-white text-[#64748b] disabled:opacity-40"
                 aria-label="Next page"
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={17} />
               </button>
             </div>
           </div>
@@ -443,17 +443,17 @@ const DashboardPage = () => {
               aria-modal="true"
               aria-labelledby="full-answer-title"
             >
-              <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-                <h4 id="full-answer-title" className="text-lg font-bold text-[#20263a]">
+              <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:p-5">
+                <h4 id="full-answer-title" className="text-base font-bold text-[#20263a]">
                   {fullAnswerModal.questionTitle}
                 </h4>
-                <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-[#475569]">
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-[#475569]">
                   {fullAnswerModal.fullAnswer}
                 </p>
                 <button
                   type="button"
                   onClick={() => setFullAnswerModal((m) => ({ ...m, open: false }))}
-                  className="mt-6 w-full rounded-xl bg-[#f9bf3b] py-3 font-bold text-[#343e43] hover:brightness-95"
+                  className="mt-4 w-full rounded-lg bg-[#f9bf3b] py-2.5 text-sm font-bold text-[#343e43] hover:brightness-95"
                 >
                   Close
                 </button>
