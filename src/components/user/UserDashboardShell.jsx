@@ -10,8 +10,7 @@ import {
   ChevronRight,
   LogOut,
 } from "lucide-react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import {
