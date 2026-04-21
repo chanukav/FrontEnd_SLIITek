@@ -15,7 +15,7 @@ export function getNotificationTargetPath(notif) {
   const questionId =
     notif.questionId || (entityType === "question" ? entityId : null);
 
-  if (type === "answer" && notif.answerId && questionId) {
+  if (notif.answerId && questionId) {
     return `/questions/${questionId}#answer-${notif.answerId}`;
   }
 

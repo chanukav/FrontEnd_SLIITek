@@ -56,6 +56,15 @@ api.interceptors.response.use(
     const originalConfig = error?.config;
     const status = error?.response?.status;
     const message = error?.response?.data?.message;
+    const bannedMessage = "This account has been banned. Login access is denied.";
+
+    if (status === 403 && message === bannedMessage) {
+      clearStoredAuth();
+      if (typeof window !== "undefined") {
+        window.location.replace("/login?banned=1");
+      }
+      return Promise.reject(error);
+    }
 
     const shouldAttemptRefresh =
       (status === 401 &&

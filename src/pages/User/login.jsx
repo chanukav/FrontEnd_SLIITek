@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { api } from "../../lib/api";
+import { toast } from "sonner";
 
 const LoginPage = () => {
   const [form, setForm] = useState({
@@ -20,6 +21,13 @@ const LoginPage = () => {
   const location = useLocation();
 
   const redirectTo = location.state?.from?.pathname || "/home";
+  const showBannedNotice = new URLSearchParams(location.search).get("banned") === "1";
+
+  useEffect(() => {
+    if (showBannedNotice) {
+      toast.error("Your account has been banned. Login access is denied.");
+    }
+  }, [showBannedNotice]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -95,6 +103,12 @@ const LoginPage = () => {
           {error && (
             <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
+            </div>
+          )}
+
+          {showBannedNotice && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Your account has been banned. Login access is denied.
             </div>
           )}
 
