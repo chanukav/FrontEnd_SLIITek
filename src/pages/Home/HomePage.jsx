@@ -66,6 +66,38 @@ const authorIdString = (author) => {
   return id != null ? String(id) : "";
 };
 
+const TAGS_BY_CATEGORY = {
+  Academic: [
+    "itpm", "oop", "dbms", "ds", "se", "os", "cn", "maths", "statistics",
+    "assignment", "exam", "past-papers", "presentation", "group-project", "final-year-project",
+  ],
+  "Technical / Programming Help": [
+    "java", "python", "javascript", "c", "c++", "react", "nodejs", "express",
+    "mongodb", "mysql", "html", "css", "api", "git", "github", "debugging", "error",
+  ],
+  "Campus Life": [
+    "timetable", "lecture", "lab", "hostel", "accommodation", "canteen", "transport",
+    "bus", "parking", "wifi", "library", "medical",
+  ],
+  "Career & Internships": [
+    "internship", "cv", "resume", "interview", "job", "linkedin",
+    "portfolio", "career-advice", "software-engineer", "training",
+  ],
+  "Study Resources": [
+    "notes", "tutorial", "ebook", "slides", "recordings", "youtube", "materials", "download",
+  ],
+  "Clubs & Events": [
+    "event", "workshop", "hackathon", "seminar", "competition", "club", "volunteer", "meetup",
+  ],
+  "General / Other": ["help", "question", "advice", "discussion", "other"],
+};
+
+const getTagListFromInput = (rawInput) =>
+  rawInput
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+
 /* ─── Question Card ──────────────────────────────────────── */
 function QuestionCard({ q, currentUserId }) {
   const isMine = Boolean(
@@ -428,6 +460,15 @@ function AskQuestion() {
   const [myAnswers, setMyAnswers] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const selectedTags = getTagListFromInput(tagsInput);
+  const categoryTags = TAGS_BY_CATEGORY[category] || [];
+  const activeTagTerm = (() => {
+    const parts = tagsInput.split(",");
+    return (parts[parts.length - 1] || "").trim().toLowerCase();
+  })();
+  const suggestedTags = categoryTags
+    .filter((tag) => tag.includes(activeTagTerm) && !selectedTags.includes(tag))
+    .slice(0, 8);
 
   const categories = [
     "Academic",
@@ -471,7 +512,7 @@ function AskQuestion() {
     e.preventDefault();
     setPosting(true); setError("");
     try {
-      const tags = tagsInput.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+      const tags = getTagListFromInput(tagsInput);
       const data = await qaApi.createQuestion({ title, body, category, tags });
       const qId = data?.question?._id;
       if (imageFiles.length && qId) {
@@ -484,6 +525,15 @@ function AskQuestion() {
     } finally {
       setPosting(false);
     }
+  };
+
+  const replaceActiveTagWith = (nextTag) => {
+    const parts = tagsInput.split(",");
+    parts[parts.length - 1] = ` ${nextTag}`;
+    const normalized = parts
+      .map((part, index) => (index === 0 ? part.trim() : ` ${part.trim()}`))
+      .join(",");
+    setTagsInput(`${normalized}, `);
   };
 
   return (
@@ -649,21 +699,52 @@ function AskQuestion() {
                 ))}
               </select>
             ) : (
-              <input
-                id={field.id}
-                type="text"
-                value={field.value}
-                onChange={(e) => field.set(e.target.value)}
-                placeholder={field.placeholder}
-                required={field.id !== "ask-tags"}
-                style={{
-                  width: "100%", padding: "0.7rem 0.9rem", border: "1.5px solid #e2e8f0",
-                  borderRadius: "10px", fontSize: "0.9rem", outline: "none",
-                  boxSizing: "border-box", transition: "border-color 0.18s, box-shadow 0.18s",
-                }}
-                onFocus={(e) => { e.target.style.borderColor = "#f9bf3b"; e.target.style.boxShadow = "0 0 0 3px rgba(249,191,59,0.15)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-              />
+              <>
+                <input
+                  id={field.id}
+                  type="text"
+                  value={field.value}
+                  onChange={(e) => field.set(e.target.value)}
+                  placeholder={field.placeholder}
+                  required={field.id !== "ask-tags"}
+                  style={{
+                    width: "100%", padding: "0.7rem 0.9rem", border: "1.5px solid #e2e8f0",
+                    borderRadius: "10px", fontSize: "0.9rem", outline: "none",
+                    boxSizing: "border-box", transition: "border-color 0.18s, box-shadow 0.18s",
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = "#f9bf3b"; e.target.style.boxShadow = "0 0 0 3px rgba(249,191,59,0.15)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
+                />
+                {field.id === "ask-tags" && (
+                  <>
+                    <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0.45rem 0 0" }}>
+                      Suggested tags for {category}: type to filter and click to add.
+                    </p>
+                    {suggestedTags.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem", marginTop: "0.55rem" }}>
+                        {suggestedTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => replaceActiveTagWith(tag)}
+                            style={{
+                              fontSize: "0.74rem",
+                              padding: "0.28rem 0.58rem",
+                              borderRadius: "999px",
+                              border: "1px solid #cbd5e1",
+                              background: "#f8fafc",
+                              color: "#334155",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </div>
         ))}
