@@ -21,9 +21,21 @@ export const getNotifications = async (params = {}) => {
 };
 
 export const getUserNotifications = async (email) => {
-    if (!email) throw new Error("Email is required to fetch notifications");
-    const res = await api.get(`${API_URL}/user/${encodeURIComponent(email)}`);
-    return res.data;
+    if (!email) {
+        const res = await api.get(`${API_URL}/user/me`);
+        return res.data;
+    }
+
+    try {
+        const res = await api.get(`${API_URL}/user/${encodeURIComponent(email)}`);
+        return res.data;
+    } catch (error) {
+        if (error?.response?.status === 403) {
+            const fallback = await api.get(`${API_URL}/user/me`);
+            return fallback.data;
+        }
+        throw error;
+    }
 };
 
 export const createNotification = async (data) => {
@@ -38,9 +50,21 @@ export const updateSentNotification = async (id, data) => {
 };
 
 export const markAllAsRead = async (email) => {
-    if (!email) throw new Error("Email is required");
-    const res = await api.put(`${API_URL}/user/${encodeURIComponent(email)}/read-all`);
-    return res.data;
+    if (!email) {
+        const res = await api.put(`${API_URL}/user/me/read-all`);
+        return res.data;
+    }
+
+    try {
+        const res = await api.put(`${API_URL}/user/${encodeURIComponent(email)}/read-all`);
+        return res.data;
+    } catch (error) {
+        if (error?.response?.status === 403) {
+            const fallback = await api.put(`${API_URL}/user/me/read-all`);
+            return fallback.data;
+        }
+        throw error;
+    }
 };
 
 export const markAsRead = async (id) => {
