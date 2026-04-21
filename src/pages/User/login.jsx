@@ -56,7 +56,15 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br  from-[#c9cedc] px-4 py-10">
+    <div
+      className="min-h-screen px-4 py-10"
+      style={{
+        backgroundImage: "url('/background.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <div className="mx-auto grid w-full max-w-6xl overflow-hidden rounded-2xl border border-white/60 bg-white/20 shadow-2xl backdrop-blur md:min-h-[640px] md:grid-cols-2">
 
         {/* LEFT SIDE WITH IMAGE */}
