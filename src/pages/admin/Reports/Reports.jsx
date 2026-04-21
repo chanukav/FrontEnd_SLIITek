@@ -23,6 +23,8 @@ export function Reports() {
   const [filter, setFilter]     = useState("all")   // all | pending | reviewed
   const [pendingAction, setPendingAction] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [reviewedContextIds, setReviewedContextIds] = useState(() => new Set())
+  const [moderationContext, setModerationContext] = useState("")
 
   useEffect(() => { fetchReports() }, [])
 
@@ -52,9 +54,14 @@ export function Reports() {
     }
   }
 
-  const handleAction = async (id, actionType) => {
+  const handleAction = async (id, actionType, notes = "") => {
     try {
-      const res = await reviewReport(id, { status: "reviewed", action: actionType, reviewedBy: "moderator" })
+      const res = await reviewReport(id, {
+        status: "reviewed",
+        action: actionType,
+        reviewedBy: "moderator",
+        moderationNotes: notes,
+      })
       if (res.success) {
         setReports((prev) => prev.map((r) => (r._id === id ? { ...r, status: "reviewed" } : r)))
       }
@@ -72,14 +79,20 @@ export function Reports() {
 
   const askConfirmAction = (report, actionType) => {
     setPendingAction({ report, actionType })
+    setModerationContext("")
   }
 
   const confirmAction = async () => {
     if (!pendingAction || actionLoading) return
     setActionLoading(true)
     try {
-      await handleAction(pendingAction.report._id, pendingAction.actionType)
+      await handleAction(
+        pendingAction.report._id,
+        pendingAction.actionType,
+        moderationContext.trim()
+      )
       setPendingAction(null)
+      setModerationContext("")
     } finally {
       setActionLoading(false)
     }
@@ -87,6 +100,11 @@ export function Reports() {
 
   const openReportContext = (report) => {
     if (!report?.contextQuestionId) return
+    setReviewedContextIds((prev) => {
+      const next = new Set(prev)
+      next.add(report._id)
+      return next
+    })
     window.open(`/questions/${report.contextQuestionId}`, "_blank", "noopener,noreferrer")
   }
 
@@ -105,7 +123,15 @@ export function Reports() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <Dialog open={!!pendingAction} onOpenChange={(open) => !open && !actionLoading && setPendingAction(null)}>
+      <Dialog
+        open={!!pendingAction}
+        onOpenChange={(open) => {
+          if (!open && !actionLoading) {
+            setPendingAction(null)
+            setModerationContext("")
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{pendingAction ? `${getActionLabel(pendingAction.actionType)}?` : "Confirm action"}</DialogTitle>
@@ -117,6 +143,20 @@ export function Reports() {
           </DialogHeader>
           <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
             {pendingAction?.report?.details || "No details provided."}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="moderation-context" className="text-sm font-medium text-foreground">
+              Context for user (optional)
+            </label>
+            <textarea
+              id="moderation-context"
+              value={moderationContext}
+              onChange={(e) => setModerationContext(e.target.value)}
+              placeholder="Add warning/review context for the user..."
+              className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              maxLength={500}
+              disabled={actionLoading}
+            />
           </div>
           <DialogFooter>
             <Button
@@ -261,11 +301,18 @@ export function Reports() {
                   {/* Actions */}
                   {report.status === "pending" && (
                     <div className="flex flex-wrap gap-2 justify-end">
+                      {(() => {
+                        const hasReviewedContext = reviewedContextIds.has(report._id)
+                        const reviewHint = "Open context at least once before taking this action"
+                        return (
+                          <>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           askConfirmAction(report, "warning")
                         }}
+                        disabled={!hasReviewedContext}
+                        title={!hasReviewedContext ? reviewHint : undefined}
                         className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
                       >
                         <ShieldAlert className="h-3.5 w-3.5" /> Warn User
@@ -275,6 +322,8 @@ export function Reports() {
                           e.stopPropagation()
                           askConfirmAction(report, "removed")
                         }}
+                        disabled={!reviewedContextIds.has(report._id)}
+                        title={!reviewedContextIds.has(report._id) ? "Open context at least once before removing" : undefined}
                         className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Remove Content
@@ -284,10 +333,15 @@ export function Reports() {
                           e.stopPropagation()
                           askConfirmAction(report, "ban")
                         }}
+                        disabled={!hasReviewedContext}
+                        title={!hasReviewedContext ? reviewHint : undefined}
                         className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors"
                       >
                         <Ban className="h-3.5 w-3.5" /> Ban User
                       </button>
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>

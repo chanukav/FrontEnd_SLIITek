@@ -26,6 +26,13 @@ export function NotificationDropdown() {
   const [markingAll, setMarkingAll] = useState(false)
   const [notifications, setNotifications] = useState([])
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications])
+  const ascendingNotifications = useMemo(
+    () =>
+      [...notifications].sort(
+        (a, b) => new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime()
+      ),
+    [notifications]
+  )
 
   // ── Initial fetch ────────────────────────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
@@ -175,7 +182,7 @@ export function NotificationDropdown() {
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notifications.slice(0, 10).map((notif) => (
+                {ascendingNotifications.slice(0, 10).map((notif) => (
                   <div
                     key={notif._id}
                     className={`relative flex items-start px-4 py-3 hover:bg-gray-50 transition-colors ${
