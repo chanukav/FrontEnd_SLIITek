@@ -5,6 +5,7 @@ import { API_ORIGIN } from "../lib/api";
 import { ImageDropZone } from "../components/ImageDropZone";
 import { QuestionImageGallery } from "../components/QuestionImageGallery";
 import { FaRegThumbsDown, FaRegThumbsUp, FaThumbsDown, FaThumbsUp } from "react-icons/fa";
+import { ShieldAlert } from "lucide-react";
 
 const displayName = (user) =>
   user?.fullName ||
@@ -80,6 +81,15 @@ function QuestionDetailsPage() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [questionMenuOpen, setQuestionMenuOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  
+  // Report states
+  const [reportingTarget, setReportingTarget] = useState(null);
+  const [reportReason, setReportReason] = useState("spam");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportError, setReportError] = useState("");
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
   const questionMenuRef = useRef(null);
@@ -488,6 +498,23 @@ function QuestionDetailsPage() {
               Delete
             </button>
           )}
+
+          {currentUser && answer.authorId?._id !== currentUser.id && (
+            <button
+              type="button"
+              className="px-3 py-1 rounded border text-sm text-slate-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center gap-1 transition-colors"
+              onClick={() => {
+                setReportingTarget({ type: answer.parentAnswerId ? "comment" : "answer", id: answer._id });
+                setReportReason("spam");
+                setReportDetails("");
+                setReportSuccess(false);
+                setReportError("");
+              }}
+            >
+              Report
+            </button>
+          )}
+
         </div>
 
         {auth?.token ? (
@@ -562,7 +589,7 @@ function QuestionDetailsPage() {
               <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.category}</span>
             )}
             <span className="text-xs px-2 py-1 rounded bg-slate-100">{question.status}</span>
-            {isQuestionOwner && (
+            {(isQuestionOwner || auth?.token) && (
               <div className="relative ml-2" ref={questionMenuRef}>
                 <button
                   type="button"
@@ -579,28 +606,49 @@ function QuestionDetailsPage() {
                     className="absolute right-0 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg overflow-hidden z-20"
                     role="menu"
                   >
-                    <button
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
-                      role="menuitem"
-                      onClick={() => {
-                        setQuestionMenuOpen(false);
-                        onEditQuestion();
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                      role="menuitem"
-                      onClick={() => {
-                        setQuestionMenuOpen(false);
-                        setConfirmDeleteOpen(true);
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {isQuestionOwner && (
+                      <>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                          role="menuitem"
+                          onClick={() => {
+                            setQuestionMenuOpen(false);
+                            onEditQuestion();
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                          role="menuitem"
+                          onClick={() => {
+                            setQuestionMenuOpen(false);
+                            setConfirmDeleteOpen(true);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {!isQuestionOwner && auth?.token && (
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex flex-row items-center gap-2"
+                        role="menuitem"
+                        onClick={() => {
+                          setQuestionMenuOpen(false);
+                          setReportingTarget({ type: "question", id: question._id });
+                          setReportReason("spam");
+                          setReportDetails("");
+                          setReportSuccess(false);
+                          setReportError("");
+                        }}
+                      >
+                        Report
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -712,6 +760,97 @@ function QuestionDetailsPage() {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Report Modal */}
+      {reportingTarget ? (
+        <div
+          className="fixed inset-0 z-[130] bg-black/50 flex items-center justify-center p-4"
+          role="presentation"
+          onClick={() => setReportingTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-red-600 flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5" /> Report Content
+            </h3>
+            
+            <p className="text-sm text-slate-600 mb-3">
+              Why are you reporting this {reportingTarget.type}?
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Reason</label>
+                <select
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500"
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                >
+                  <option value="spam">Spam</option>
+                  <option value="misinformation">Misinformation</option>
+                  <option value="abuse">Abuse / Harassment</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Details (Optional)</label>
+                <textarea
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500 min-h-20"
+                  placeholder="Provide additional details to help moderators..."
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  maxLength={1000}
+                />
+              </div>
+            </div>
+
+            {reportError && <p className="text-red-500 text-sm mt-3">{reportError}</p>}
+            {reportSuccess && <p className="text-green-600 text-sm mt-3 font-medium">Report submitted. Thank you.</p>}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border text-sm hover:bg-slate-50"
+                onClick={() => setReportingTarget(null)}
+                disabled={submittingReport}
+              >
+                Close
+              </button>
+              {!reportSuccess && (
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                  onClick={async () => {
+                    const { createReport } = await import("../services/reportService");
+                    setSubmittingReport(true);
+                    setReportError("");
+                    try {
+                      await createReport({
+                        targetType: reportingTarget.type,
+                        targetId: reportingTarget.id,
+                        reason: reportReason,
+                        details: reportDetails
+                      });
+                      setReportSuccess(true);
+                      setTimeout(() => setReportingTarget(null), 2000);
+                    } catch (err) {
+                      setReportError(err.message || "Failed to submit report");
+                    } finally {
+                      setSubmittingReport(false);
+                    }
+                  }}
+                  disabled={submittingReport}
+                >
+                  {submittingReport ? "Submitting..." : "Submit Report"}
+                </button>
+              )}
             </div>
           </div>
         </div>

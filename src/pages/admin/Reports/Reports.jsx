@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { ShieldAlert, Trash2, Ban, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { getReports, reviewReport } from "../../../services/reportService"
+import { io } from "socket.io-client"
 
 const statusStyle = {
   pending:  { pill: "pill-red",    label: "Pending" },
@@ -14,6 +15,20 @@ export function Reports() {
   const [filter, setFilter]     = useState("all")   // all | pending | reviewed
 
   useEffect(() => { fetchReports() }, [])
+
+  useEffect(() => {
+    // Listen for real-time reports
+    const socket = io("http://localhost:5000"); // Ensure backend API matching
+    
+    socket.on("new-report", (report) => {
+      // Unshift to place at the top of the queue
+      setReports((prev) => [report, ...prev]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const fetchReports = async () => {
     try {
@@ -143,7 +158,11 @@ export function Reports() {
                       </span>
                       <span>
                         Reported by:{" "}
-                        <span className="font-medium text-foreground">{report.reportedBy}</span>
+                        <span className="font-medium text-foreground">
+                          {typeof report.reportedBy === 'object' && report.reportedBy !== null 
+                            ? (report.reportedBy.fullName || 'Unknown User') 
+                            : String(report.reportedBy || 'Unknown User')}
+                        </span>
                       </span>
                     </div>
 
