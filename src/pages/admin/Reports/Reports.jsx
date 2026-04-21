@@ -3,6 +3,14 @@ import { ShieldAlert, Trash2, Ban, RefreshCw, AlertTriangle, CheckCircle } from 
 import { Button } from "../../../components/ui/button"
 import { getReports, reviewReport } from "../../../services/reportService"
 import { io } from "socket.io-client"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog"
 
 const statusStyle = {
   pending:  { pill: "pill-red",    label: "Pending" },
@@ -13,6 +21,8 @@ export function Reports() {
   const [reports, setReports]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState("all")   // all | pending | reviewed
+  const [pendingAction, setPendingAction] = useState(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => { fetchReports() }, [])
 
@@ -46,11 +56,38 @@ export function Reports() {
     try {
       const res = await reviewReport(id, { status: "reviewed", action: actionType, reviewedBy: "moderator" })
       if (res.success) {
-        setReports(reports.map(r => r._id === id ? { ...r, status: "reviewed" } : r))
+        setReports((prev) => prev.map((r) => (r._id === id ? { ...r, status: "reviewed" } : r)))
       }
     } catch (e) {
       console.error(e)
     }
+  }
+
+  const getActionLabel = (actionType) => {
+    if (actionType === "warning") return "Warn User"
+    if (actionType === "removed") return "Remove Content"
+    if (actionType === "ban") return "Ban User"
+    return "Apply Action"
+  }
+
+  const askConfirmAction = (report, actionType) => {
+    setPendingAction({ report, actionType })
+  }
+
+  const confirmAction = async () => {
+    if (!pendingAction || actionLoading) return
+    setActionLoading(true)
+    try {
+      await handleAction(pendingAction.report._id, pendingAction.actionType)
+      setPendingAction(null)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const openReportContext = (report) => {
+    if (!report?.contextQuestionId) return
+    window.open(`/questions/${report.contextQuestionId}`, "_blank", "noopener,noreferrer")
   }
 
   const visible = reports.filter(r => filter === "all" ? true : r.status === filter)
@@ -68,6 +105,39 @@ export function Reports() {
 
   return (
     <div className="space-y-6 animate-fade-up">
+      <Dialog open={!!pendingAction} onOpenChange={(open) => !open && !actionLoading && setPendingAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pendingAction ? `${getActionLabel(pendingAction.actionType)}?` : "Confirm action"}</DialogTitle>
+            <DialogDescription>
+              {pendingAction
+                ? `Are you sure you want to ${getActionLabel(pendingAction.actionType).toLowerCase()} for this ${pendingAction.report?.targetType || "reported"} item?`
+                : "Please confirm this moderation action."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            {pendingAction?.report?.details || "No details provided."}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingAction(null)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={pendingAction?.actionType === "removed" || pendingAction?.actionType === "ban" ? "destructive" : "default"}
+              onClick={confirmAction}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Applying..." : pendingAction ? `Confirm ${getActionLabel(pendingAction.actionType)}` : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Header ───────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
@@ -128,6 +198,16 @@ export function Reports() {
               key={report._id}
               className="bg-white rounded-2xl border border-border shadow-soft overflow-hidden hover:shadow-card transition-shadow animate-fade-up"
               style={{ animationDelay: `${i * 50}ms` }}
+              role={report.contextQuestionId ? "button" : undefined}
+              tabIndex={report.contextQuestionId ? 0 : undefined}
+              onClick={() => openReportContext(report)}
+              onKeyDown={(e) => {
+                if (!report.contextQuestionId) return
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  openReportContext(report)
+                }
+              }}
             >
               <div className="flex flex-col md:flex-row">
                 {/* Left accent */}
@@ -164,6 +244,12 @@ export function Reports() {
                             : String(report.reportedBy || 'Unknown User')}
                         </span>
                       </span>
+                      <span>
+                        Context:{" "}
+                        <span className="font-medium text-foreground">
+                          {report.contextQuestionId ? "Open question" : "Not available"}
+                        </span>
+                      </span>
                     </div>
 
                     {/* Details box */}
@@ -176,19 +262,28 @@ export function Reports() {
                   {report.status === "pending" && (
                     <div className="flex flex-wrap gap-2 justify-end">
                       <button
-                        onClick={() => handleAction(report._id, "warning")}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          askConfirmAction(report, "warning")
+                        }}
                         className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
                       >
                         <ShieldAlert className="h-3.5 w-3.5" /> Warn User
                       </button>
                       <button
-                        onClick={() => handleAction(report._id, "removed")}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          askConfirmAction(report, "removed")
+                        }}
                         className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Remove Content
                       </button>
                       <button
-                        onClick={() => handleAction(report._id, "ban")}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          askConfirmAction(report, "ban")
+                        }}
                         className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors"
                       >
                         <Ban className="h-3.5 w-3.5" /> Ban User
