@@ -1,3 +1,6 @@
+# E2E test credentials – never commit
+.env.e2e
+
 # Logs
 logs
 *.log
@@ -22,3 +25,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
