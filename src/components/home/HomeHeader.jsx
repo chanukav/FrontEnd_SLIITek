@@ -214,6 +214,7 @@ function HomeNotificationDropdown({ email }) {
             e.currentTarget.style.color = "var(--color-muted-foreground)";
           }
         }}
+        aria-label="View notifications"
       >
         <FiBell size={20} />
         {unreadCount > 0 && (
