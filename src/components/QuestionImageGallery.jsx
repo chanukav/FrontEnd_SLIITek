@@ -15,6 +15,7 @@ export function QuestionImageGallery({
   maxPreview = 4,
   onRemoveUrl, // optional: (url) => void
   canRemove = false,
+  className = "",
 }) {
   const normalized = useMemo(
     () =>
@@ -60,7 +61,13 @@ export function QuestionImageGallery({
 
   return (
     <>
-      <div className={`mt-4 grid ${gridClass} gap-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50`}>
+      <div
+        className={[
+          "grid gap-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50",
+          gridClass,
+          className.trim() ? className : "mt-4",
+        ].join(" ")}
+      >
         {preview.map((img, idx) => {
           const isLastWithExtra = extra > 0 && idx === preview.length - 1;
           return (

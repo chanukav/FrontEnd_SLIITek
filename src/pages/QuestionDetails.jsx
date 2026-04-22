@@ -85,6 +85,8 @@ const getAnswerValidationError = (text) => {
 };
 
 const MAX_ANSWER_IMAGES = 4;
+/** One photo per answer/reply from the + control (matches UX: text + one photo). */
+const INLINE_ANSWER_IMAGE_MAX = 1;
 
 const normalizeImageList = (value) => {
   if (Array.isArray(value)) return value;
@@ -142,8 +144,10 @@ function QuestionDetailsPage() {
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [newAnswer, setNewAnswer] = useState("");
+  const [newAnswerFiles, setNewAnswerFiles] = useState([]);
   const [answerError, setAnswerError] = useState("");
   const [replyErrors, setReplyErrors] = useState({});
+  const [replyImageFiles, setReplyImageFiles] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
@@ -157,7 +161,26 @@ function QuestionDetailsPage() {
   const [uploadingAnswerImages, setUploadingAnswerImages] = useState(false);
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
+  const newAnswerImageInputRef = useRef(null);
+  const replyImageInputRefs = useRef({});
   const questionMenuRef = useRef(null);
+  const [newAnswerImagePreviewUrl, setNewAnswerImagePreviewUrl] = useState("");
+
+  useEffect(() => {
+    const file = newAnswerFiles[0];
+    if (!file) {
+      setNewAnswerImagePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return "";
+      });
+      return undefined;
+    }
+    const u = URL.createObjectURL(file);
+    setNewAnswerImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return u;
+    });
+  }, [newAnswerFiles]);
 
   const auth = (() => {
     try {
@@ -241,6 +264,48 @@ function QuestionDetailsPage() {
     };
   }, [questionMenuOpen]);
 
+  const onNewAnswerImageInputChange = (e) => {
+    const picked = Array.from(e.target.files || [])[0];
+    e.target.value = "";
+    if (!picked) return;
+    const t = (picked.type || "").toLowerCase();
+    const ok =
+      t === "image/jpeg" ||
+      t === "image/png" ||
+      t === "image/gif" ||
+      t === "image/webp" ||
+      /\.(jpe?g|png|gif|webp)$/i.test(picked.name);
+    if (!ok) {
+      setAnswerError("Please choose a JPEG, PNG, GIF, or WebP image.");
+      return;
+    }
+    setAnswerError("");
+    setNewAnswerFiles([picked]);
+  };
+
+  const onReplyImageInputChange = (answerId, e) => {
+    const picked = Array.from(e.target.files || [])[0];
+    e.target.value = "";
+    const key = String(answerId);
+    if (!picked) return;
+    const t = (picked.type || "").toLowerCase();
+    const ok =
+      t === "image/jpeg" ||
+      t === "image/png" ||
+      t === "image/gif" ||
+      t === "image/webp" ||
+      /\.(jpe?g|png|gif|webp)$/i.test(picked.name);
+    if (!ok) {
+      setReplyErrors((prev) => ({
+        ...prev,
+        [key]: "Please choose a JPEG, PNG, GIF, or WebP image.",
+      }));
+      return;
+    }
+    setReplyErrors((prev) => ({ ...prev, [key]: "" }));
+    setReplyImageFiles((prev) => ({ ...prev, [key]: [picked] }));
+  };
+
   const submitAnswer = async (e) => {
     e.preventDefault();
     if (!auth?.token) {
@@ -249,12 +314,19 @@ function QuestionDetailsPage() {
     }
 
     const trimmed = newAnswer.trim();
-    const validationError = getAnswerValidationError(trimmed);
-    if (validationError) {
-      setAnswerError(validationError);
+    const hasFiles = newAnswerFiles.length > 0;
+    if (!trimmed && !hasFiles) {
+      setAnswerError("Please write an answer or attach an image.");
       return;
     }
-    if (ANSWER_BLOCKED_WORDS.test(trimmed)) {
+    if (trimmed) {
+      const validationError = getAnswerValidationError(trimmed);
+      if (validationError) {
+        setAnswerError(validationError);
+        return;
+      }
+    }
+    if (trimmed && ANSWER_BLOCKED_WORDS.test(trimmed)) {
       setAnswerError("Please remove offensive words from your answer.");
       return;
     }
@@ -262,11 +334,23 @@ function QuestionDetailsPage() {
     try {
       setPostingAnswer(true);
       setAnswerError("");
-      const res = await qaApi.postAnswer(id, { body: trimmed });
+      const res = await qaApi.postAnswer(id, {
+        body: trimmed,
+        ...(hasFiles ? { files: newAnswerFiles.slice(0, INLINE_ANSWER_IMAGE_MAX) } : {}),
+      });
       const created = res?.answer;
+      let images = normalizeImageList(created?.images);
+      if (created?._id && hasFiles && !images.length) {
+        const up = await qaApi.uploadAnswerImages(
+          created._id,
+          newAnswerFiles.slice(0, INLINE_ANSWER_IMAGE_MAX)
+        );
+        images = normalizeImageList(up?.answer?.images);
+      }
       if (created?._id) {
         const createdAnswer = {
           ...created,
+          images,
           authorId: currentUser
             ? {
                 _id: currentUser.id,
@@ -286,6 +370,7 @@ function QuestionDetailsPage() {
         setAnswers((prev) => [createdAnswer, ...prev]);
       }
       setNewAnswer("");
+      setNewAnswerFiles([]);
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) {
@@ -439,20 +524,44 @@ function QuestionDetailsPage() {
     const el = replyTextareasRef.current?.[key];
     const text = el?.value || "";
     const trimmed = text.trim();
-    const validationError = getAnswerValidationError(trimmed);
-    if (validationError) {
-      setReplyErrors((prev) => ({ ...prev, [key]: validationError }));
+    const files = replyImageFiles[key] || [];
+    const hasFiles = files.length > 0;
+    if (!trimmed && !hasFiles) {
+      setReplyErrors((prev) => ({
+        ...prev,
+        [key]: "Please write a reply or attach an image.",
+      }));
       return;
+    }
+    if (trimmed) {
+      const validationError = getAnswerValidationError(trimmed);
+      if (validationError) {
+        setReplyErrors((prev) => ({ ...prev, [key]: validationError }));
+        return;
+      }
     }
 
     try {
       setReplyErrors((prev) => ({ ...prev, [key]: "" }));
       setError("");
-      const res = await qaApi.postAnswer(id, { body: trimmed, parentAnswerId });
+      const res = await qaApi.postAnswer(id, {
+        body: trimmed,
+        parentAnswerId,
+        ...(hasFiles ? { files: files.slice(0, INLINE_ANSWER_IMAGE_MAX) } : {}),
+      });
       const created = res?.answer;
+      let images = normalizeImageList(created?.images);
+      if (created?._id && hasFiles && !images.length) {
+        const up = await qaApi.uploadAnswerImages(
+          created._id,
+          files.slice(0, INLINE_ANSWER_IMAGE_MAX)
+        );
+        images = normalizeImageList(up?.answer?.images);
+      }
       if (created?._id) {
         const createdReply = {
           ...created,
+          images,
           authorId: currentUser
             ? {
                 _id: currentUser.id,
@@ -472,6 +581,7 @@ function QuestionDetailsPage() {
         setAnswers((prev) => insertReplyInTree(prev, parentAnswerId, createdReply));
       }
       if (el) el.value = "";
+      setReplyImageFiles((prev) => ({ ...prev, [key]: [] }));
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Reply failed");
     }
@@ -678,21 +788,62 @@ function QuestionDetailsPage() {
 
         {auth?.token ? (
           <div className="mt-3">
-            <textarea
-              className="w-full border rounded-md px-3 py-2 min-h-20"
-              placeholder="Write a reply"
-              maxLength={ANSWER_MAX_LENGTH}
-              onChange={() => {
-                const replyKey = String(answer._id);
-                if (replyErrors[replyKey]) {
-                  setReplyErrors((prev) => ({ ...prev, [replyKey]: "" }));
-                }
-              }}
-              ref={(el) => {
-                if (!el) return;
-                replyTextareasRef.current[String(answer._id)] = el;
-              }}
-            />
+            <div className="relative">
+              <button
+                type="button"
+                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-lg leading-none text-slate-700 hover:bg-slate-50"
+                onClick={() => replyImageInputRefs.current[String(answer._id)]?.click()}
+                title="Add one photo"
+                aria-label="Add one photo"
+              >
+                +
+              </button>
+              <textarea
+                className="w-full border rounded-md px-3 py-2 pr-12 min-h-20"
+                placeholder="Write a reply"
+                maxLength={ANSWER_MAX_LENGTH}
+                onChange={() => {
+                  const replyKey = String(answer._id);
+                  if (replyErrors[replyKey]) {
+                    setReplyErrors((prev) => ({ ...prev, [replyKey]: "" }));
+                  }
+                }}
+                ref={(el) => {
+                  if (!el) return;
+                  replyTextareasRef.current[String(answer._id)] = el;
+                }}
+              />
+              <input
+                ref={(el) => {
+                  if (!el) return;
+                  replyImageInputRefs.current[String(answer._id)] = el;
+                }}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="sr-only"
+                onChange={(e) => onReplyImageInputChange(answer._id, e)}
+              />
+            </div>
+            {(replyImageFiles[String(answer._id)] || [])[0] ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <span>1 photo selected</span>
+                <span className="truncate max-w-[200px]">
+                  {(replyImageFiles[String(answer._id)][0] || {}).name}
+                </span>
+                <button
+                  type="button"
+                  className="text-red-600 underline"
+                  onClick={() =>
+                    setReplyImageFiles((prev) => ({
+                      ...prev,
+                      [String(answer._id)]: [],
+                    }))
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
             <p className="text-xs text-slate-500 mt-1">
               Minimum {ANSWER_MIN_LENGTH} character{ANSWER_MIN_LENGTH > 1 ? "s" : ""} ·
               {" "}Maximum {ANSWER_MAX_LENGTH} characters
@@ -830,18 +981,64 @@ function QuestionDetailsPage() {
       <div className="bg-white rounded-xl shadow p-5">
         <h2 className="text-lg font-semibold mb-3">Your answer</h2>
         <form onSubmit={submitAnswer} className="space-y-3">
-          <textarea
-            className="w-full border rounded-md px-3 py-2 min-h-28"
-            value={newAnswer}
-            maxLength={ANSWER_MAX_LENGTH}
-            onChange={(e) => {
-              setNewAnswer(e.target.value);
-              if (answerError) setAnswerError("");
-            }}
-            placeholder="Write your answer"
-          />
+          <div className="relative">
+            <button
+              type="button"
+              className={`absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-md border text-xl leading-none transition ${
+                postingAnswer
+                  ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+              onClick={() => newAnswerImageInputRef.current?.click()}
+              disabled={postingAnswer}
+              title="Add one photo"
+              aria-label="Add one photo"
+            >
+              +
+            </button>
+            <textarea
+              className="w-full border rounded-md px-3 py-2 pr-12 min-h-28"
+              value={newAnswer}
+              maxLength={ANSWER_MAX_LENGTH}
+              onChange={(e) => {
+                setNewAnswer(e.target.value);
+                if (answerError) setAnswerError("");
+              }}
+              placeholder="Write your answer"
+            />
+            <input
+              ref={newAnswerImageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="sr-only"
+              onChange={onNewAnswerImageInputChange}
+            />
+          </div>
+          {newAnswerFiles[0] ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              {newAnswerImagePreviewUrl ? (
+                <img
+                  src={newAnswerImagePreviewUrl}
+                  alt=""
+                  className="h-16 w-16 rounded-md border border-slate-200 object-cover"
+                />
+              ) : null}
+              <div className="flex flex-col gap-0.5">
+                <span>1 photo selected</span>
+                <span className="text-xs text-slate-500 truncate max-w-xs">{newAnswerFiles[0].name}</span>
+              </div>
+              <button
+                type="button"
+                className="text-sm text-red-600 underline"
+                onClick={() => setNewAnswerFiles([])}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <p className="text-xs text-slate-500">
-            Minimum {ANSWER_MIN_LENGTH} characters · {newAnswer.trim().length}/{ANSWER_MAX_LENGTH}
+            Minimum {ANSWER_MIN_LENGTH} characters (if you use text) · {newAnswer.trim().length}/
+            {ANSWER_MAX_LENGTH}
           </p>
           {answerError && <p className="text-red-500 text-sm">{answerError}</p>}
           <button

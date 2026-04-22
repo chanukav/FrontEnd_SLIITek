@@ -75,8 +75,30 @@ export const qaApi = {
 
   getAnswersByQuestion: async (questionId) =>
     unwrap(await api.get(`/answers/question/${questionId}`)),
-  postAnswer: async (questionId, payload) =>
-    unwrap(await api.post(`/answers/${questionId}`, payload, withAuth())),
+  postAnswer: async (questionId, { body, parentAnswerId, files } = {}) => {
+    const hasFiles = Array.isArray(files) && files.length > 0;
+    if (hasFiles) {
+      const form = new FormData();
+      form.append("body", typeof body === "string" ? body : "");
+      if (parentAnswerId != null && String(parentAnswerId).trim()) {
+        form.append("parentAnswerId", String(parentAnswerId).trim());
+      }
+      for (const f of files) {
+        form.append("images", f);
+      }
+      return unwrap(await api.post(`/answers/${questionId}`, form, withAuth()));
+    }
+    return unwrap(
+      await api.post(
+        `/answers/${questionId}`,
+        {
+          ...(typeof body === "string" ? { body } : {}),
+          ...(parentAnswerId ? { parentAnswerId } : {}),
+        },
+        withAuth()
+      )
+    );
+  },
   editAnswer: async (answerId, payload) =>
     unwrap(await api.put(`/answers/${answerId}`, payload, withAuth())),
   deleteAnswer: async (answerId) =>
