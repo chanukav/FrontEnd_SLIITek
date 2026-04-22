@@ -16,6 +16,13 @@ const FACULTIES = [
 ];
 
 const MASK = "••••••••";
+const avatarSrc = (raw) => {
+  const u = String(raw || "").trim();
+  if (!u) return null;
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  if (u.startsWith("/")) return `${API_ORIGIN}${u}`;
+  return `${API_ORIGIN}/${u}`;
+};
 
 export function Profile() {
   const { auth, login } = useAuth();
@@ -56,7 +63,7 @@ export function Profile() {
             phone: u.phone || "",
           });
           if (u.avatar) {
-            setAvatarPreview(`${API_ORIGIN}${u.avatar}`);
+            setAvatarPreview(avatarSrc(u.avatar));
             setClearAvatar(false);
           } else {
             setAvatarPreview(null);
@@ -137,7 +144,7 @@ export function Profile() {
           },
         });
         if (updated.avatar) {
-          setAvatarPreview(`${API_ORIGIN}${updated.avatar}`);
+          setAvatarPreview(avatarSrc(updated.avatar));
         } else if (!clearAvatar) {
           setAvatarPreview(null);
         }
