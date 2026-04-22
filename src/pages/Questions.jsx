@@ -25,6 +25,98 @@ const authorIdString = (author) => {
   return id != null ? String(id) : "";
 };
 
+const TAGS_BY_CATEGORY = {
+  Academic: [
+    "itpm",
+    "oop",
+    "dbms",
+    "ds",
+    "se",
+    "os",
+    "cn",
+    "maths",
+    "statistics",
+    "assignment",
+    "exam",
+    "past-papers",
+    "presentation",
+    "group-project",
+    "final-year-project",
+  ],
+  "Technical / Programming Help": [
+    "java",
+    "python",
+    "javascript",
+    "c",
+    "c++",
+    "react",
+    "nodejs",
+    "express",
+    "mongodb",
+    "mysql",
+    "html",
+    "css",
+    "api",
+    "git",
+    "github",
+    "debugging",
+    "error",
+  ],
+  "Campus Life": [
+    "timetable",
+    "lecture",
+    "lab",
+    "hostel",
+    "accommodation",
+    "canteen",
+    "transport",
+    "bus",
+    "parking",
+    "wifi",
+    "library",
+    "medical",
+  ],
+  "Career & Internships": [
+    "internship",
+    "cv",
+    "resume",
+    "interview",
+    "job",
+    "linkedin",
+    "portfolio",
+    "career-advice",
+    "software-engineer",
+    "training",
+  ],
+  "Study Resources": [
+    "notes",
+    "tutorial",
+    "ebook",
+    "slides",
+    "recordings",
+    "youtube",
+    "materials",
+    "download",
+  ],
+  "Clubs & Events": [
+    "event",
+    "workshop",
+    "hackathon",
+    "seminar",
+    "competition",
+    "club",
+    "volunteer",
+    "meetup",
+  ],
+  "General / Other": ["help", "question", "advice", "discussion", "other"],
+};
+
+const getTagListFromInput = (rawInput) =>
+  rawInput
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+
 function QuestionsPage() {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
@@ -63,6 +155,15 @@ function QuestionsPage() {
     }
   })();
   const viewerId = auth?.user?.id ?? auth?.user?._id;
+  const selectedTags = getTagListFromInput(tagsInput);
+  const categoryTags = TAGS_BY_CATEGORY[category] || [];
+  const activeTagTerm = (() => {
+    const parts = tagsInput.split(",");
+    return (parts[parts.length - 1] || "").trim().toLowerCase();
+  })();
+  const suggestedTags = categoryTags
+    .filter((tag) => tag.includes(activeTagTerm) && !selectedTags.includes(tag))
+    .slice(0, 8);
 
   const loadQuestions = async () => {
     setLoading(true);
@@ -157,7 +258,7 @@ function QuestionsPage() {
     try {
       setPosting(true);
       setError("");
-      const tags = tagsInput.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+      const tags = getTagListFromInput(tagsInput);
       const data = await qaApi.createQuestion({ title, body, category, tags });
       const qId = data?.question?._id;
       if (imageFiles.length && qId) {
@@ -181,6 +282,15 @@ function QuestionsPage() {
     } finally {
       setPosting(false);
     }
+  };
+
+  const replaceActiveTagWith = (nextTag) => {
+    const parts = tagsInput.split(",");
+    parts[parts.length - 1] = ` ${nextTag}`;
+    const normalized = parts
+      .map((part, index) => (index === 0 ? part.trim() : ` ${part.trim()}`))
+      .join(",");
+    setTagsInput(`${normalized}, `);
   };
 
   return (
@@ -343,6 +453,23 @@ function QuestionsPage() {
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
             />
+            <p className="text-xs text-slate-500 mt-1">
+              Suggested tags for {category}: type to filter and click to add.
+            </p>
+            {!!suggestedTags.length && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {suggestedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="text-xs px-2 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                    onClick={() => replaceActiveTagWith(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <ImageDropZone
