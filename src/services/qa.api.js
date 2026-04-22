@@ -74,9 +74,31 @@ export const qaApi = {
   deleteQuestion: async (id) => unwrap(await api.delete(`/questions/${id}`, withAuth())),
 
   getAnswersByQuestion: async (questionId) =>
-    unwrap(await api.get(`/answers/question/${questionId}`, withAuth())),
-  postAnswer: async (questionId, payload) =>
-    unwrap(await api.post(`/answers/${questionId}`, payload, withAuth())),
+    unwrap(await api.get(`/answers/question/${questionId}`)),
+  postAnswer: async (questionId, { body, parentAnswerId, files } = {}) => {
+    const hasFiles = Array.isArray(files) && files.length > 0;
+    if (hasFiles) {
+      const form = new FormData();
+      form.append("body", typeof body === "string" ? body : "");
+      if (parentAnswerId != null && String(parentAnswerId).trim()) {
+        form.append("parentAnswerId", String(parentAnswerId).trim());
+      }
+      for (const f of files) {
+        form.append("images", f);
+      }
+      return unwrap(await api.post(`/answers/${questionId}`, form, withAuth()));
+    }
+    return unwrap(
+      await api.post(
+        `/answers/${questionId}`,
+        {
+          ...(typeof body === "string" ? { body } : {}),
+          ...(parentAnswerId ? { parentAnswerId } : {}),
+        },
+        withAuth()
+      )
+    );
+  },
   editAnswer: async (answerId, payload) =>
     unwrap(await api.put(`/answers/${answerId}`, payload, withAuth())),
   deleteAnswer: async (answerId) =>
@@ -87,6 +109,20 @@ export const qaApi = {
     unwrap(await api.post(`/answers/${answerId}/vote`, payload, withAuth())),
   unvoteAnswer: async (answerId) =>
     unwrap(await api.delete(`/answers/${answerId}/vote`, withAuth())),
+  uploadAnswerImages: async (answerId, files) => {
+    const form = new FormData();
+    for (const f of files) {
+      form.append("images", f);
+    }
+    return unwrap(await api.post(`/answers/${answerId}/images`, form, withAuth()));
+  },
+  removeAnswerImage: async (answerId, url) =>
+    unwrap(
+      await api.delete(`/answers/${answerId}/images`, {
+        ...withAuth(),
+        data: { url },
+      })
+    ),
   addCommentToAnswer: async (answerId, payload) =>
     unwrap(await api.post(`/answers/${answerId}/comments`, payload, withAuth())),
 };

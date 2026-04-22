@@ -1,3 +1,11 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "../components/ui/dialog";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
@@ -51,8 +59,19 @@ const insertReplyInTree = (items, parentAnswerId, reply) => {
   });
 };
 
+const removeAnswerFromTree = (items, answerId) => {
+  const idStr = String(answerId);
+  return items
+    .filter((item) => String(item._id) !== idStr)
+    .map((item) => ({
+      ...item,
+      replies: item.replies?.length ? removeAnswerFromTree(item.replies, answerId) : [],
+    }));
+};
+
 const ANSWER_MIN_LENGTH = 1;
 const ANSWER_MAX_LENGTH = 2000;
+const ANSWER_BLOCKED_WORDS = /\b(fuck|fucking|fucker|shit|bitch|bastard|asshole)\b/i;
 
 const getAnswerValidationError = (text) => {
   const trimmed = text.trim();
@@ -66,6 +85,59 @@ const getAnswerValidationError = (text) => {
   return "";
 };
 
+const MAX_ANSWER_IMAGES = 4;
+/** One photo per answer/reply from the + control (matches UX: text + one photo). */
+const INLINE_ANSWER_IMAGE_MAX = 1;
+
+const normalizeImageList = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  return [value];
+};
+
+const findAnswerInTree = (items, answerId) => {
+  const idStr = String(answerId);
+  for (const item of items) {
+    if (String(item._id) === idStr) return item;
+    if (item.replies?.length) {
+      const found = findAnswerInTree(item.replies, answerId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+const initialsFromDisplayName = (displayName) => {
+  if (!displayName) return "?";
+  return displayName
+    .split(" ")
+    .map((word) => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+};
+
+const shortAnswerTime = (createdAt) => {
+  if (!createdAt) return "now";
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+
+  if (diffSecs < 60) return "now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffWeeks < 4) return `${diffWeeks}w ago`;
+
+  return date.toLocaleDateString();
+};
+
 function QuestionDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,8 +145,10 @@ function QuestionDetailsPage() {
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [newAnswer, setNewAnswer] = useState("");
+  const [newAnswerFiles, setNewAnswerFiles] = useState([]);
   const [answerError, setAnswerError] = useState("");
   const [replyErrors, setReplyErrors] = useState({});
+  const [replyImageFiles, setReplyImageFiles] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [postingAnswer, setPostingAnswer] = useState(false);
@@ -90,9 +164,33 @@ function QuestionDetailsPage() {
   const [reportSuccess, setReportSuccess] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
 
+  const [editAnswerId, setEditAnswerId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editError, setEditError] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [uploadingAnswerImages, setUploadingAnswerImages] = useState(false);
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
+  const newAnswerImageInputRef = useRef(null);
+  const replyImageInputRefs = useRef({});
   const questionMenuRef = useRef(null);
+  const [newAnswerImagePreviewUrl, setNewAnswerImagePreviewUrl] = useState("");
+
+  useEffect(() => {
+    const file = newAnswerFiles[0];
+    if (!file) {
+      setNewAnswerImagePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return "";
+      });
+      return undefined;
+    }
+    const u = URL.createObjectURL(file);
+    setNewAnswerImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return u;
+    });
+  }, [newAnswerFiles]);
 
   const auth = (() => {
     try {
@@ -176,6 +274,48 @@ function QuestionDetailsPage() {
     };
   }, [questionMenuOpen]);
 
+  const onNewAnswerImageInputChange = (e) => {
+    const picked = Array.from(e.target.files || [])[0];
+    e.target.value = "";
+    if (!picked) return;
+    const t = (picked.type || "").toLowerCase();
+    const ok =
+      t === "image/jpeg" ||
+      t === "image/png" ||
+      t === "image/gif" ||
+      t === "image/webp" ||
+      /\.(jpe?g|png|gif|webp)$/i.test(picked.name);
+    if (!ok) {
+      setAnswerError("Please choose a JPEG, PNG, GIF, or WebP image.");
+      return;
+    }
+    setAnswerError("");
+    setNewAnswerFiles([picked]);
+  };
+
+  const onReplyImageInputChange = (answerId, e) => {
+    const picked = Array.from(e.target.files || [])[0];
+    e.target.value = "";
+    const key = String(answerId);
+    if (!picked) return;
+    const t = (picked.type || "").toLowerCase();
+    const ok =
+      t === "image/jpeg" ||
+      t === "image/png" ||
+      t === "image/gif" ||
+      t === "image/webp" ||
+      /\.(jpe?g|png|gif|webp)$/i.test(picked.name);
+    if (!ok) {
+      setReplyErrors((prev) => ({
+        ...prev,
+        [key]: "Please choose a JPEG, PNG, GIF, or WebP image.",
+      }));
+      return;
+    }
+    setReplyErrors((prev) => ({ ...prev, [key]: "" }));
+    setReplyImageFiles((prev) => ({ ...prev, [key]: [picked] }));
+  };
+
   const submitAnswer = async (e) => {
     e.preventDefault();
     if (!auth?.token) {
@@ -184,20 +324,43 @@ function QuestionDetailsPage() {
     }
 
     const trimmed = newAnswer.trim();
-    const validationError = getAnswerValidationError(trimmed);
-    if (validationError) {
-      setAnswerError(validationError);
+    const hasFiles = newAnswerFiles.length > 0;
+    if (!trimmed && !hasFiles) {
+      setAnswerError("Please write an answer or attach an image.");
+      return;
+    }
+    if (trimmed) {
+      const validationError = getAnswerValidationError(trimmed);
+      if (validationError) {
+        setAnswerError(validationError);
+        return;
+      }
+    }
+    if (trimmed && ANSWER_BLOCKED_WORDS.test(trimmed)) {
+      setAnswerError("Please remove offensive words from your answer.");
       return;
     }
 
     try {
       setPostingAnswer(true);
       setAnswerError("");
-      const res = await qaApi.postAnswer(id, { body: trimmed });
+      const res = await qaApi.postAnswer(id, {
+        body: trimmed,
+        ...(hasFiles ? { files: newAnswerFiles.slice(0, INLINE_ANSWER_IMAGE_MAX) } : {}),
+      });
       const created = res?.answer;
+      let images = normalizeImageList(created?.images);
+      if (created?._id && hasFiles && !images.length) {
+        const up = await qaApi.uploadAnswerImages(
+          created._id,
+          newAnswerFiles.slice(0, INLINE_ANSWER_IMAGE_MAX)
+        );
+        images = normalizeImageList(up?.answer?.images);
+      }
       if (created?._id) {
         const createdAnswer = {
           ...created,
+          images,
           authorId: currentUser
             ? {
                 _id: currentUser.id,
@@ -217,6 +380,7 @@ function QuestionDetailsPage() {
         setAnswers((prev) => [createdAnswer, ...prev]);
       }
       setNewAnswer("");
+      setNewAnswerFiles([]);
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) {
@@ -317,7 +481,7 @@ function QuestionDetailsPage() {
   const onDelete = async (answerId) => {
     try {
       await qaApi.deleteAnswer(answerId);
-      await load();
+      setAnswers((prev) => removeAnswerFromTree(prev, answerId));
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Delete failed");
     }
@@ -332,17 +496,10 @@ function QuestionDetailsPage() {
     }
   };
 
-  const onEdit = async (answer) => {
-    const body = window.prompt("Edit your answer", answer.body);
-    if (body === null) return;
-    if (!body.trim()) return;
-
-    try {
-      await qaApi.editAnswer(answer._id, { body });
-      await load();
-    } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Edit failed");
-    }
+  const onEdit = (answer) => {
+    setEditAnswerId(answer._id);
+    setEditDraft(answer.body || "");
+    setEditError("");
   };
 
   const onVoteAnswer = async (answerId, type) => {
@@ -377,20 +534,44 @@ function QuestionDetailsPage() {
     const el = replyTextareasRef.current?.[key];
     const text = el?.value || "";
     const trimmed = text.trim();
-    const validationError = getAnswerValidationError(trimmed);
-    if (validationError) {
-      setReplyErrors((prev) => ({ ...prev, [key]: validationError }));
+    const files = replyImageFiles[key] || [];
+    const hasFiles = files.length > 0;
+    if (!trimmed && !hasFiles) {
+      setReplyErrors((prev) => ({
+        ...prev,
+        [key]: "Please write a reply or attach an image.",
+      }));
       return;
+    }
+    if (trimmed) {
+      const validationError = getAnswerValidationError(trimmed);
+      if (validationError) {
+        setReplyErrors((prev) => ({ ...prev, [key]: validationError }));
+        return;
+      }
     }
 
     try {
       setReplyErrors((prev) => ({ ...prev, [key]: "" }));
       setError("");
-      const res = await qaApi.postAnswer(id, { body: trimmed, parentAnswerId });
+      const res = await qaApi.postAnswer(id, {
+        body: trimmed,
+        parentAnswerId,
+        ...(hasFiles ? { files: files.slice(0, INLINE_ANSWER_IMAGE_MAX) } : {}),
+      });
       const created = res?.answer;
+      let images = normalizeImageList(created?.images);
+      if (created?._id && hasFiles && !images.length) {
+        const up = await qaApi.uploadAnswerImages(
+          created._id,
+          files.slice(0, INLINE_ANSWER_IMAGE_MAX)
+        );
+        images = normalizeImageList(up?.answer?.images);
+      }
       if (created?._id) {
         const createdReply = {
           ...created,
+          images,
           authorId: currentUser
             ? {
                 _id: currentUser.id,
@@ -410,8 +591,75 @@ function QuestionDetailsPage() {
         setAnswers((prev) => insertReplyInTree(prev, parentAnswerId, createdReply));
       }
       if (el) el.value = "";
+      setReplyImageFiles((prev) => ({ ...prev, [key]: [] }));
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Reply failed");
+    }
+  };
+
+  const closeEditAnswer = () => {
+    setEditAnswerId(null);
+    setEditDraft("");
+    setEditError("");
+  };
+
+  const saveEditAnswer = async () => {
+    if (!editAnswerId) return;
+    const trimmed = editDraft.trim();
+    const editTarget = findAnswerInTree(answers, editAnswerId);
+    if (!editTarget) return;
+
+    const editImages = normalizeImageList(editTarget.images);
+    if (!trimmed && !editImages.length) {
+      setEditError("Text or images required");
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      setEditError("");
+      await qaApi.editAnswer(editAnswerId, { body: trimmed });
+      setAnswers((prev) =>
+        patchAnswerInTree(prev, editAnswerId, { body: trimmed })
+      );
+      closeEditAnswer();
+    } catch (err) {
+      setEditError(err?.response?.data?.message || err.message || "Edit failed");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const uploadEditAnswerImageFiles = async (fileBatch) => {
+    if (!editAnswerId || !auth?.token) return;
+    try {
+      setEditError("");
+      setUploadingAnswerImages(true);
+      const res = await qaApi.uploadAnswerImages(editAnswerId, fileBatch);
+      if (res?.answer) {
+        setAnswers((prev) =>
+          patchAnswerInTree(prev, editAnswerId, { images: res.answer.images })
+        );
+      }
+    } catch (err) {
+      setEditError(err?.response?.data?.message || err.message || "Upload failed");
+    } finally {
+      setUploadingAnswerImages(false);
+    }
+  };
+
+  const onRemoveEditAnswerImage = async (url) => {
+    if (!editAnswerId || !auth?.token) return;
+    try {
+      setEditError("");
+      const res = await qaApi.removeAnswerImage(editAnswerId, url);
+      if (res?.answer) {
+        setAnswers((prev) =>
+          patchAnswerInTree(prev, editAnswerId, { images: res.answer.images })
+        );
+      }
+    } catch (err) {
+      setEditError(err?.response?.data?.message || err.message || "Remove failed");
     }
   };
 
@@ -421,8 +669,20 @@ function QuestionDetailsPage() {
 
   const AnswerCard = ({ answer, depth }) => {
     const isBest = bestAnswerId && answer._id === bestAnswerId;
-    const domId =
-      answer?._id != null ? `answer-${String(answer._id)}` : undefined;
+    const authorLabel = displayName(answer.authorId);
+    const initials = initialsFromDisplayName(authorLabel);
+    const when = shortAnswerTime(answer.createdAt);
+    const editedWhen = shortAnswerTime(answer.updatedAt);
+    const isEdited =
+      !!answer.updatedAt &&
+      !!answer.createdAt &&
+      new Date(answer.updatedAt).getTime() - new Date(answer.createdAt).getTime() > 1500;
+    const answerImages = normalizeImageList(answer.images);
+    const hasImages = answerImages.length > 0;
+    const hasText = !!answer.body?.trim();
+    const hasBubble = hasText || hasImages;
+    const domId = `answer-${answer._id}`;
+
     return (
       <div
         id={domId}
@@ -431,11 +691,39 @@ function QuestionDetailsPage() {
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="font-medium">{displayName(answer.authorId)}</p>
+          <div>
+            <p className="font-medium">{displayName(answer.authorId)}</p>
+            <p className="text-xs text-slate-500">
+              {when}
+              {isEdited ? ` · edited ${editedWhen}` : ""}
+            </p>
+          </div>
           {isBest && <span className="text-xs text-green-700 font-semibold">Best</span>}
         </div>
 
-        <p className="text-slate-700 mt-1">{answer.body}</p>
+            {hasBubble ? (
+              <div
+                className={`mt-1.5 rounded-2xl px-3.5 py-2.5 ${
+                  isBest
+                    ? "bg-emerald-50/95 ring-1 ring-emerald-200/90"
+                    : "bg-slate-100 ring-1 ring-black/6"
+                }`}
+              >
+                {hasText ? (
+                  <p className="text-[15px] leading-snug text-slate-900 whitespace-pre-wrap">
+                    {answer.body}
+                  </p>
+                ) : null}
+                <QuestionImageGallery
+                  variant="bubble"
+                  className={hasText ? "mt-2" : ""}
+                  images={answerImages}
+                  origin={API_ORIGIN}
+                  maxPreview={4}
+                  canRemove={false}
+                />
+              </div>
+            ) : null}
 
         <div className="flex flex-wrap gap-2 mt-3">
           {(() => {
@@ -450,7 +738,11 @@ function QuestionDetailsPage() {
                   className={`px-3 py-1 rounded border text-sm flex items-center gap-2 border-blue-400 bg-blue-50 ${
                     liked ? "ring-2 ring-blue-500" : ""
                   }`}
-                  onClick={() => onVoteAnswer(answer._id, "like")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onVoteAnswer(answer._id, "like");
+                  }}
                 >
                   {liked ? <FaThumbsUp size={16} /> : <FaRegThumbsUp size={16} />}
                   Like ({likeCount})
@@ -460,7 +752,11 @@ function QuestionDetailsPage() {
                   className={`px-3 py-1 rounded border text-sm flex items-center gap-2 border-blue-400 bg-blue-50 ${
                     disliked ? "ring-2 ring-blue-500" : ""
                   }`}
-                  onClick={() => onVoteAnswer(answer._id, "dislike")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onVoteAnswer(answer._id, "dislike");
+                  }}
                 >
                   {disliked ? <FaThumbsDown size={16} /> : <FaRegThumbsDown size={16} />}
                   Unlike ({unlikeCount})
@@ -519,21 +815,62 @@ function QuestionDetailsPage() {
 
         {auth?.token ? (
           <div className="mt-3">
-            <textarea
-              className="w-full border rounded-md px-3 py-2 min-h-20"
-              placeholder="Write a reply"
-              maxLength={ANSWER_MAX_LENGTH}
-              onChange={() => {
-                const replyKey = String(answer._id);
-                if (replyErrors[replyKey]) {
-                  setReplyErrors((prev) => ({ ...prev, [replyKey]: "" }));
-                }
-              }}
-              ref={(el) => {
-                if (!el) return;
-                replyTextareasRef.current[String(answer._id)] = el;
-              }}
-            />
+            <div className="relative">
+              <button
+                type="button"
+                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-lg leading-none text-slate-700 hover:bg-slate-50"
+                onClick={() => replyImageInputRefs.current[String(answer._id)]?.click()}
+                title="Add one photo"
+                aria-label="Add one photo"
+              >
+                +
+              </button>
+              <textarea
+                className="w-full border rounded-md px-3 py-2 pr-12 min-h-20"
+                placeholder="Write a reply"
+                maxLength={ANSWER_MAX_LENGTH}
+                onChange={() => {
+                  const replyKey = String(answer._id);
+                  if (replyErrors[replyKey]) {
+                    setReplyErrors((prev) => ({ ...prev, [replyKey]: "" }));
+                  }
+                }}
+                ref={(el) => {
+                  if (!el) return;
+                  replyTextareasRef.current[String(answer._id)] = el;
+                }}
+              />
+              <input
+                ref={(el) => {
+                  if (!el) return;
+                  replyImageInputRefs.current[String(answer._id)] = el;
+                }}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="sr-only"
+                onChange={(e) => onReplyImageInputChange(answer._id, e)}
+              />
+            </div>
+            {(replyImageFiles[String(answer._id)] || [])[0] ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <span>1 photo selected</span>
+                <span className="truncate max-w-[200px]">
+                  {(replyImageFiles[String(answer._id)][0] || {}).name}
+                </span>
+                <button
+                  type="button"
+                  className="text-red-600 underline"
+                  onClick={() =>
+                    setReplyImageFiles((prev) => ({
+                      ...prev,
+                      [String(answer._id)]: [],
+                    }))
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
             <p className="text-xs text-slate-500 mt-1">
               Minimum {ANSWER_MIN_LENGTH} character{ANSWER_MIN_LENGTH > 1 ? "s" : ""} ·
               {" "}Maximum {ANSWER_MAX_LENGTH} characters
@@ -692,18 +1029,64 @@ function QuestionDetailsPage() {
       <div className="bg-white rounded-xl shadow p-5">
         <h2 className="text-lg font-semibold mb-3">Your answer</h2>
         <form onSubmit={submitAnswer} className="space-y-3">
-          <textarea
-            className="w-full border rounded-md px-3 py-2 min-h-28"
-            value={newAnswer}
-            maxLength={ANSWER_MAX_LENGTH}
-            onChange={(e) => {
-              setNewAnswer(e.target.value);
-              if (answerError) setAnswerError("");
-            }}
-            placeholder="Write your answer"
-          />
+          <div className="relative">
+            <button
+              type="button"
+              className={`absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-md border text-xl leading-none transition ${
+                postingAnswer
+                  ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+              onClick={() => newAnswerImageInputRef.current?.click()}
+              disabled={postingAnswer}
+              title="Add one photo"
+              aria-label="Add one photo"
+            >
+              +
+            </button>
+            <textarea
+              className="w-full border rounded-md px-3 py-2 pr-12 min-h-28"
+              value={newAnswer}
+              maxLength={ANSWER_MAX_LENGTH}
+              onChange={(e) => {
+                setNewAnswer(e.target.value);
+                if (answerError) setAnswerError("");
+              }}
+              placeholder="Write your answer"
+            />
+            <input
+              ref={newAnswerImageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="sr-only"
+              onChange={onNewAnswerImageInputChange}
+            />
+          </div>
+          {newAnswerFiles[0] ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              {newAnswerImagePreviewUrl ? (
+                <img
+                  src={newAnswerImagePreviewUrl}
+                  alt=""
+                  className="h-16 w-16 rounded-md border border-slate-200 object-cover"
+                />
+              ) : null}
+              <div className="flex flex-col gap-0.5">
+                <span>1 photo selected</span>
+                <span className="text-xs text-slate-500 truncate max-w-xs">{newAnswerFiles[0].name}</span>
+              </div>
+              <button
+                type="button"
+                className="text-sm text-red-600 underline"
+                onClick={() => setNewAnswerFiles([])}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <p className="text-xs text-slate-500">
-            Minimum {ANSWER_MIN_LENGTH} characters · {newAnswer.trim().length}/{ANSWER_MAX_LENGTH}
+            Minimum {ANSWER_MIN_LENGTH} characters (if you use text) · {newAnswer.trim().length}/
+            {ANSWER_MAX_LENGTH}
           </p>
           {answerError && <p className="text-red-500 text-sm">{answerError}</p>}
           <button
@@ -728,9 +1111,70 @@ function QuestionDetailsPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
+      <Dialog
+        open={editAnswerId !== null}
+        onOpenChange={(open) => {
+          if (!open) closeEditAnswer();
+        }}
+      >
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden border-slate-200 p-0 shadow-2xl sm:max-w-2xl">
+          <div className="border-b border-slate-100 bg-linear-to-br from-slate-50 via-white to-slate-50/80 px-6 py-5">
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-semibold tracking-tight text-slate-900">
+                Edit answer
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500">
+                Update your answer text.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="space-y-3 px-6 py-5">
+            <textarea
+              className="w-full min-h-40 resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-slate-800 shadow-inner shadow-slate-100/50 ring-offset-background transition placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azureBlue focus-visible:ring-offset-2"
+              value={editDraft}
+              maxLength={ANSWER_MAX_LENGTH}
+              onChange={(e) => {
+                setEditDraft(e.target.value);
+                if (editError) setEditError("");
+              }}
+              placeholder="Write your answer…"
+              aria-invalid={!!editError}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <span>
+                {editDraft.trim().length}/{ANSWER_MAX_LENGTH} characters
+              </span>
+            </div>
+            {editError && (
+              <p className="text-sm font-medium text-red-600" role="alert">
+                {editError}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="flex-row justify-end gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:justify-end">
+            <button
+              type="button"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              onClick={closeEditAnswer}
+              disabled={savingEdit}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-header px-5 text-sm font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
+              onClick={() => void saveEditAnswer()}
+              disabled={savingEdit}
+            >
+              {savingEdit ? "Saving…" : "Save changes"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {confirmDeleteOpen ? (
         <div
-          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-120 bg-black/50 flex items-center justify-center p-4"
           role="presentation"
           onClick={() => setConfirmDeleteOpen(false)}
         >
