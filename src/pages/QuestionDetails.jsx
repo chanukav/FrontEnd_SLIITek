@@ -1,3 +1,11 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "../components/ui/dialog";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { qaApi } from "../services/qa.api";
@@ -50,8 +58,19 @@ const insertReplyInTree = (items, parentAnswerId, reply) => {
   });
 };
 
+const removeAnswerFromTree = (items, answerId) => {
+  const idStr = String(answerId);
+  return items
+    .filter((item) => String(item._id) !== idStr)
+    .map((item) => ({
+      ...item,
+      replies: item.replies?.length ? removeAnswerFromTree(item.replies, answerId) : [],
+    }));
+};
+
 const ANSWER_MIN_LENGTH = 1;
 const ANSWER_MAX_LENGTH = 2000;
+const ANSWER_BLOCKED_WORDS = /\b(fuck|fucking|fucker|shit|bitch|bastard|asshole)\b/i;
 
 const getAnswerValidationError = (text) => {
   const trimmed = text.trim();
@@ -63,6 +82,57 @@ const getAnswerValidationError = (text) => {
     return `Answer must be less than ${ANSWER_MAX_LENGTH + 1} characters.`;
   }
   return "";
+};
+
+const MAX_ANSWER_IMAGES = 4;
+
+const normalizeImageList = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  return [value];
+};
+
+const findAnswerInTree = (items, answerId) => {
+  const idStr = String(answerId);
+  for (const item of items) {
+    if (String(item._id) === idStr) return item;
+    if (item.replies?.length) {
+      const found = findAnswerInTree(item.replies, answerId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+const initialsFromDisplayName = (displayName) => {
+  if (!displayName) return "?";
+  return displayName
+    .split(" ")
+    .map((word) => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+};
+
+const shortAnswerTime = (createdAt) => {
+  if (!createdAt) return "now";
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+
+  if (diffSecs < 60) return "now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffWeeks < 4) return `${diffWeeks}w ago`;
+
+  return date.toLocaleDateString();
 };
 
 function QuestionDetailsPage() {
@@ -80,6 +150,11 @@ function QuestionDetailsPage() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [questionMenuOpen, setQuestionMenuOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [editAnswerId, setEditAnswerId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editError, setEditError] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [uploadingAnswerImages, setUploadingAnswerImages] = useState(false);
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
   const questionMenuRef = useRef(null);
@@ -177,6 +252,10 @@ function QuestionDetailsPage() {
     const validationError = getAnswerValidationError(trimmed);
     if (validationError) {
       setAnswerError(validationError);
+      return;
+    }
+    if (ANSWER_BLOCKED_WORDS.test(trimmed)) {
+      setAnswerError("Please remove offensive words from your answer.");
       return;
     }
 
@@ -307,7 +386,7 @@ function QuestionDetailsPage() {
   const onDelete = async (answerId) => {
     try {
       await qaApi.deleteAnswer(answerId);
-      await load();
+      setAnswers((prev) => removeAnswerFromTree(prev, answerId));
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Delete failed");
     }
@@ -322,17 +401,10 @@ function QuestionDetailsPage() {
     }
   };
 
-  const onEdit = async (answer) => {
-    const body = window.prompt("Edit your answer", answer.body);
-    if (body === null) return;
-    if (!body.trim()) return;
-
-    try {
-      await qaApi.editAnswer(answer._id, { body });
-      await load();
-    } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Edit failed");
-    }
+  const onEdit = (answer) => {
+    setEditAnswerId(answer._id);
+    setEditDraft(answer.body || "");
+    setEditError("");
   };
 
   const onVoteAnswer = async (answerId, type) => {
@@ -405,14 +477,92 @@ function QuestionDetailsPage() {
     }
   };
 
+  const closeEditAnswer = () => {
+    setEditAnswerId(null);
+    setEditDraft("");
+    setEditError("");
+  };
+
+  const saveEditAnswer = async () => {
+    if (!editAnswerId) return;
+    const trimmed = editDraft.trim();
+    const editTarget = findAnswerInTree(answers, editAnswerId);
+    if (!editTarget) return;
+
+    const editImages = normalizeImageList(editTarget.images);
+    if (!trimmed && !editImages.length) {
+      setEditError("Text or images required");
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      setEditError("");
+      await qaApi.editAnswer(editAnswerId, { body: trimmed });
+      setAnswers((prev) =>
+        patchAnswerInTree(prev, editAnswerId, { body: trimmed })
+      );
+      closeEditAnswer();
+    } catch (err) {
+      setEditError(err?.response?.data?.message || err.message || "Edit failed");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const uploadEditAnswerImageFiles = async (fileBatch) => {
+    if (!editAnswerId || !auth?.token) return;
+    try {
+      setEditError("");
+      setUploadingAnswerImages(true);
+      const res = await qaApi.uploadAnswerImages(editAnswerId, fileBatch);
+      if (res?.answer) {
+        setAnswers((prev) =>
+          patchAnswerInTree(prev, editAnswerId, { images: res.answer.images })
+        );
+      }
+    } catch (err) {
+      setEditError(err?.response?.data?.message || err.message || "Upload failed");
+    } finally {
+      setUploadingAnswerImages(false);
+    }
+  };
+
+  const onRemoveEditAnswerImage = async (url) => {
+    if (!editAnswerId || !auth?.token) return;
+    try {
+      setEditError("");
+      const res = await qaApi.removeAnswerImage(editAnswerId, url);
+      if (res?.answer) {
+        setAnswers((prev) =>
+          patchAnswerInTree(prev, editAnswerId, { images: res.answer.images })
+        );
+      }
+    } catch (err) {
+      setEditError(err?.response?.data?.message || err.message || "Remove failed");
+    }
+  };
+
   if (loading) return <div className="p-6">Loading...</div>;
   if (!question) return <div className="p-6">Question not found</div>;
   const bestAnswerId = answers?.[0]?._id;
 
   const AnswerCard = ({ answer, depth }) => {
     const isBest = bestAnswerId && answer._id === bestAnswerId;
-    const domId =
-      answer?._id != null ? `answer-${String(answer._id)}` : undefined;
+    const authorLabel = displayName(answer.authorId);
+    const initials = initialsFromDisplayName(authorLabel);
+    const when = shortAnswerTime(answer.createdAt);
+    const editedWhen = shortAnswerTime(answer.updatedAt);
+    const isEdited =
+      !!answer.updatedAt &&
+      !!answer.createdAt &&
+      new Date(answer.updatedAt).getTime() - new Date(answer.createdAt).getTime() > 1500;
+    const answerImages = normalizeImageList(answer.images);
+    const hasImages = answerImages.length > 0;
+    const hasText = !!answer.body?.trim();
+    const hasBubble = hasText || hasImages;
+    const domId = `answer-${answer._id}`;
+
     return (
       <div
         id={domId}
@@ -421,11 +571,39 @@ function QuestionDetailsPage() {
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="font-medium">{displayName(answer.authorId)}</p>
+          <div>
+            <p className="font-medium">{displayName(answer.authorId)}</p>
+            <p className="text-xs text-slate-500">
+              {when}
+              {isEdited ? ` · edited ${editedWhen}` : ""}
+            </p>
+          </div>
           {isBest && <span className="text-xs text-green-700 font-semibold">Best</span>}
         </div>
 
-        <p className="text-slate-700 mt-1">{answer.body}</p>
+            {hasBubble ? (
+              <div
+                className={`mt-1.5 rounded-2xl px-3.5 py-2.5 ${
+                  isBest
+                    ? "bg-emerald-50/95 ring-1 ring-emerald-200/90"
+                    : "bg-slate-100 ring-1 ring-black/6"
+                }`}
+              >
+                {hasText ? (
+                  <p className="text-[15px] leading-snug text-slate-900 whitespace-pre-wrap">
+                    {answer.body}
+                  </p>
+                ) : null}
+                <QuestionImageGallery
+                  variant="bubble"
+                  className={hasText ? "mt-2" : ""}
+                  images={answerImages}
+                  origin={API_ORIGIN}
+                  maxPreview={4}
+                  canRemove={false}
+                />
+              </div>
+            ) : null}
 
         <div className="flex flex-wrap gap-2 mt-3">
           {(() => {
@@ -440,7 +618,11 @@ function QuestionDetailsPage() {
                   className={`px-3 py-1 rounded border text-sm flex items-center gap-2 border-blue-400 bg-blue-50 ${
                     liked ? "ring-2 ring-blue-500" : ""
                   }`}
-                  onClick={() => onVoteAnswer(answer._id, "like")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onVoteAnswer(answer._id, "like");
+                  }}
                 >
                   {liked ? <FaThumbsUp size={16} /> : <FaRegThumbsUp size={16} />}
                   Like ({likeCount})
@@ -450,7 +632,11 @@ function QuestionDetailsPage() {
                   className={`px-3 py-1 rounded border text-sm flex items-center gap-2 border-blue-400 bg-blue-50 ${
                     disliked ? "ring-2 ring-blue-500" : ""
                   }`}
-                  onClick={() => onVoteAnswer(answer._id, "dislike")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onVoteAnswer(answer._id, "dislike");
+                  }}
                 >
                   {disliked ? <FaThumbsDown size={16} /> : <FaRegThumbsDown size={16} />}
                   Unlike ({unlikeCount})
@@ -680,9 +866,70 @@ function QuestionDetailsPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
+      <Dialog
+        open={editAnswerId !== null}
+        onOpenChange={(open) => {
+          if (!open) closeEditAnswer();
+        }}
+      >
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden border-slate-200 p-0 shadow-2xl sm:max-w-2xl">
+          <div className="border-b border-slate-100 bg-linear-to-br from-slate-50 via-white to-slate-50/80 px-6 py-5">
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-semibold tracking-tight text-slate-900">
+                Edit answer
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500">
+                Update your answer text.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="space-y-3 px-6 py-5">
+            <textarea
+              className="w-full min-h-40 resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-slate-800 shadow-inner shadow-slate-100/50 ring-offset-background transition placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azureBlue focus-visible:ring-offset-2"
+              value={editDraft}
+              maxLength={ANSWER_MAX_LENGTH}
+              onChange={(e) => {
+                setEditDraft(e.target.value);
+                if (editError) setEditError("");
+              }}
+              placeholder="Write your answer…"
+              aria-invalid={!!editError}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <span>
+                {editDraft.trim().length}/{ANSWER_MAX_LENGTH} characters
+              </span>
+            </div>
+            {editError && (
+              <p className="text-sm font-medium text-red-600" role="alert">
+                {editError}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="flex-row justify-end gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:justify-end">
+            <button
+              type="button"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              onClick={closeEditAnswer}
+              disabled={savingEdit}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-header px-5 text-sm font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
+              onClick={() => void saveEditAnswer()}
+              disabled={savingEdit}
+            >
+              {savingEdit ? "Saving…" : "Save changes"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {confirmDeleteOpen ? (
         <div
-          className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-120 bg-black/50 flex items-center justify-center p-4"
           role="presentation"
           onClick={() => setConfirmDeleteOpen(false)}
         >
