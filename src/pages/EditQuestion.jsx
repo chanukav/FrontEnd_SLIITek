@@ -50,6 +50,49 @@ export default function EditQuestionPage() {
     load();
   }, [id]);
 
+  const validateEditForm = () => {
+    const nextTitle = title.trim();
+    const nextBody = body.trim();
+    const nextCategory = category.trim();
+
+    // Title validation
+    if (!nextTitle) {
+      return "Title is required";
+    }
+    if (nextTitle.length < 10) {
+      return "Title must be at least 10 characters long";
+    }
+    if (nextTitle.length > 200) {
+      return "Title must not exceed 200 characters";
+    }
+    if (!/^[a-zA-Z0-9\s\?.,!()&\-':;]/.test(nextTitle)) {
+      return "Title contains invalid characters";
+    }
+
+    // Body validation
+    if (!nextBody) {
+      return "Description is required";
+    }
+    if (nextBody.length < 20) {
+      return "Description must be at least 20 characters long";
+    }
+    if (nextBody.length > 5000) {
+      return "Description must not exceed 5000 characters";
+    }
+    const bodyWords = nextBody.split(/\s+/).filter(Boolean);
+    if (bodyWords.length < 5) {
+      return "Description must contain at least 5 words";
+    }
+
+    // Category validation
+    const validCategories = CATEGORIES;
+    if (!nextCategory || !validCategories.includes(nextCategory)) {
+      return "Please select a valid category";
+    }
+
+    return null;
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     if (!auth?.token) {
@@ -57,14 +100,16 @@ export default function EditQuestionPage() {
       return;
     }
 
+    // Validate form
+    const validationError = validateEditForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     const nextTitle = title.trim();
     const nextBody = body.trim();
     const nextCategory = category.trim();
-
-    if (!nextTitle || !nextBody || !nextCategory) {
-      setError("Title, body, and category are required");
-      return;
-    }
 
     try {
       setSaving(true);

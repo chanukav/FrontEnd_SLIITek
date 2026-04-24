@@ -248,6 +248,88 @@ function QuestionsPage() {
     return () => clearTimeout(handle);
   }, [title]);
 
+  const validateQuestionForm = () => {
+    const trimmedTitle = title.trim();
+    const trimmedBody = body.trim();
+    const trimmedCategory = category.trim();
+    const tags = getTagListFromInput(tagsInput);
+
+    // Title validation
+    if (!trimmedTitle) {
+      return "Title is required";
+    }
+    if (trimmedTitle.length < 10) {
+      return "Title must be at least 10 characters long";
+    }
+    if (trimmedTitle.length > 200) {
+      return "Title must not exceed 200 characters";
+    }
+    if (!/^[a-zA-Z0-9\s\?.,!()&\-':;]/.test(trimmedTitle)) {
+      return "Title contains invalid characters";
+    }
+
+    // Body validation
+    if (!trimmedBody) {
+      return "Description is required";
+    }
+    if (trimmedBody.length < 20) {
+      return "Description must be at least 20 characters long";
+    }
+    if (trimmedBody.length > 5000) {
+      return "Description must not exceed 5000 characters";
+    }
+    const bodyWords = trimmedBody.split(/\s+/).filter(Boolean);
+    if (bodyWords.length < 5) {
+      return "Description must contain at least 5 words";
+    }
+
+    // Category validation
+    const validCategories = [
+      "Academic",
+      "Career & Internships",
+      "Campus Life",
+      "Technical / Programming Help",
+      "Study Resources",
+      "Clubs & Events",
+      "General / Other",
+    ];
+    if (!trimmedCategory || !validCategories.includes(trimmedCategory)) {
+      return "Please select a valid category";
+    }
+
+    // Tags validation
+    if (tags.length > 0) {
+      if (tags.length > 10) {
+        return "Maximum 10 tags allowed";
+      }
+      for (const tag of tags) {
+        if (tag.length < 2 || tag.length > 25) {
+          return `Each tag must be between 2 and 25 characters (invalid: "${tag}")`;
+        }
+        if (!/^[a-z0-9\-]+$/.test(tag)) {
+          return `Tag "${tag}" contains invalid characters. Use only lowercase letters, numbers, and hyphens`;
+        }
+      }
+    }
+
+    // Image validation
+    if (imageFiles.length > 8) {
+      return "Maximum 8 images allowed";
+    }
+    for (const file of imageFiles) {
+      const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      if (!validTypes.includes(file.type)) {
+        return `Invalid image type: ${file.name}. Allowed: JPEG, PNG, GIF, WebP`;
+      }
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        return `Image ${file.name} exceeds 5MB limit`;
+      }
+    }
+
+    return null;
+  };
+
   const submitQuestion = async (e) => {
     e.preventDefault();
     if (!auth?.token) {
@@ -255,11 +337,23 @@ function QuestionsPage() {
       return;
     }
 
+    // Validate form
+    const validationError = validateQuestionForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setPosting(true);
       setError("");
       const tags = getTagListFromInput(tagsInput);
-      const data = await qaApi.createQuestion({ title, body, category, tags });
+      const data = await qaApi.createQuestion({ 
+        title: title.trim(), 
+        body: body.trim(), 
+        category: category.trim(), 
+        tags 
+      });
       const qId = data?.question?._id;
       if (imageFiles.length && qId) {
         await qaApi.uploadQuestionImages(qId, imageFiles);
