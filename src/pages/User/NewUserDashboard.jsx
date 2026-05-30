@@ -15,7 +15,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { UserDashboardShell } from "../../components/user/UserDashboardShell";
-import { Notifications } from "./Notifications/Notifications";
+import { Notifications } from "../user/Notifications/Notifications";
 import { Settings as UserSettingsPanel } from "../user/Settings/Settings";
 
 /** Fallback when API is unavailable; same shape as GET /user-dashboard/me/recent-answers */
