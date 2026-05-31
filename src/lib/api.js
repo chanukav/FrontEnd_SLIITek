@@ -1,10 +1,12 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://localhost:5000/api");
 
 /** Origin for static files (e.g. /uploads) — strip trailing /api from API base */
-export const API_ORIGIN = String(API_BASE_URL).replace(/\/api\/?$/, "") || "http://localhost:5000";
+export const API_ORIGIN = import.meta.env.VITE_API_URL 
+  ? String(import.meta.env.VITE_API_URL).replace(/\/api\/?$/, "") 
+  : (import.meta.env.PROD ? "" : "http://localhost:5000");
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
