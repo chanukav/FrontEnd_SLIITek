@@ -50,4 +50,5 @@ jobs:
           docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/sliitek-frontend:latest
           docker stop sliitek_frontend || true
           docker rm sliitek_frontend || true
-          docker run -d --name sliitek_frontend -p 80:80 --restart always ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/sliitek-frontend:latest
+          docker network create sliitek_net || true
+          docker run -d --name sliitek_frontend --network sliitek_net -p 80:80 --restart always ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/sliitek-frontend:latest
