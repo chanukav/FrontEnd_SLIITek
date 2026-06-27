@@ -6,8 +6,8 @@ import { Users } from "./pages/admin/Users/Users"
 import { Reports } from "./pages/admin/Reports/Reports"
 import { Notifications } from "./pages/admin/Notifications/Notifications"
 import { Settings } from "./pages/admin/Settings/Settings"
-import { Profile as UserProfile } from "./pages/user/Profile/Profile"
-import { Messages as UserMessages } from "./pages/user/Messages/Messages"
+import { Profile as UserProfile } from "./pages/User/Profile/Profile"
+import { Messages as UserMessages } from "./pages/User/Messages/Messages"
 import "./App.css";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
