@@ -97,14 +97,34 @@ environment {
 
 ---
 
-## 🚀 Step 3: Run the Jenkins Pipeline
+## 🚀 Step 3: Configure Triggers & Run the Jenkins Pipeline
 
-1. Create a **Pipeline** job in Jenkins pointing to the frontend Git repository.
-2. Trigger the build manually or configure a webhook.
-3. The pipeline will:
-   - Pull the latest frontend code.
-   - Run `npm install` and linter validation (`npm run lint`).
-   - Build a multi-stage Docker image:
+The pipeline is configured with a `triggers` block to support automated error checking on code pushes. 
+
+### 1. Configure Automatic Push Triggers (Webhooks)
+To have Jenkins automatically trigger builds when you push commits to GitHub:
+1. **In Jenkins**:
+   - Go to your Pipeline job configuration.
+   - Under **Build Triggers**, check **GitHub hook trigger for GITScm polling**.
+2. **In GitHub**:
+   - Go to your repository settings page.
+   - Click **Webhooks** > **Add webhook**.
+   - Set **Payload URL** to `http://<your-jenkins-server-url>/github-webhook/` (ensure the trailing slash is included).
+   - Set **Content type** to `application/json`.
+   - Choose **Just the push event** and click **Add webhook**.
+
+*Note: SCM polling (`pollSCM`) is configured in the `Jenkinsfile` as a fallback to poll the repository for changes every 5 minutes if webhooks are not set up.*
+
+### 2. Multi-Branch Pipeline & Validation Behavior
+To protect the production environment, the pipeline behaves differently based on the branch being built:
+- **All Branches**: Upon push, the pipeline will run full validation tests (`npm install`, `npm run lint`, `npm test`, and `npm run build` compilation) to check whether there are any errors. If any step fails, the build fails and you are immediately notified.
+- **`main` Branch Only**: If the branch is `main`, the pipeline proceeds to build the Docker image, push it to AWS ECR, and deploy it to the EC2 host. For other branches, these deployment steps are skipped.
+
+### 3. Pipeline Execution Flow
+When a build is triggered, the pipeline:
+- Pulls the latest code.
+- Runs full validation (`npm install`, `npm run lint`, `npm test`, and `npm run build`).
+- (If branch is `main`) Builds a multi-stage Docker image:
      - **Stage 1 (Build)**: Compiles the Vite frontend React bundle (`npm run build`) into `dist/`.
      - **Stage 2 (Production)**: Copies the built files into an `nginx:alpine` image and copies `nginx.conf`.
    - Log into ECR and push the frontend image.

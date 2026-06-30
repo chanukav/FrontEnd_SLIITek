@@ -16,6 +16,11 @@ pipeline {
         ansiColor('xterm')
     }
 
+    triggers {
+        githubPush() // Trigger on GitHub push events webhook
+        pollSCM('H/5 * * * *') // Fallback polling every 5 minutes if webhooks are not set up
+    }
+
     stages {
         stage('Clean Workspace') {
             steps {
@@ -29,20 +34,34 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies & Lint') {
+        stage('Install Dependencies & Verify') {
             steps {
                 bat 'npm install'
-                bat 'npm run lint || true' // Prevent build failure if there are only warning-level lint warnings
+                bat 'npm run lint'
+                bat 'npm test'
+                bat 'npm run build'
             }
         }
 
         stage('Build Docker Image') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                }
+            }
             steps {
                 bat 'docker build -t %ECR_REPOSITORY%:%IMAGE_TAG% .'
             }
         }
 
         stage('Login to Amazon ECR') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                }
+            }
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
@@ -54,6 +73,12 @@ pipeline {
         }
 
         stage('Push Image to ECR') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                }
+            }
             steps {
                 retry(3) {
                     bat 'docker tag %ECR_REPOSITORY%:%IMAGE_TAG% %ECR_REGISTRY%/%ECR_REPOSITORY%:%IMAGE_TAG%'
@@ -63,6 +88,12 @@ pipeline {
         }
 
         stage('Deploy to EC2 via SSH') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                }
+            }
             steps {
                 withCredentials([sshUserPrivateKey(
                     credentialsId: 'ec2-ssh-key-id',
