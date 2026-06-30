@@ -122,10 +122,10 @@ environment {
 The frontend uses Nginx (`nginx.conf`) to serve static assets and handle routing for single-page applications (React Router fallback). It also serves as a reverse proxy:
 
 - Requests to `/` serve the React application.
-- Requests to `/api/*` are dynamically proxied to `http://backend:5000` via the internal Docker container network (`sliitek_net`).
-- Requests to `/uploads/*` are proxied to `http://backend:5000/uploads/*` (if local storage fallback is used instead of Azure).
+- Requests to `/api/*` are dynamically proxied to `backend_servers` (which load-balances requests between `backend_a:5000` and `backend_b:5000` in the internal Docker network `sliitek_net`).
+- Requests to `/uploads/*` are proxied to `backend_servers/uploads/*` (if local storage fallback is used instead of Azure).
 
-This architecture eliminates the need to configure CORS on the backend for the EC2 IP and simplifies client configuration since `VITE_API_URL` defaults to relative path `/api` in production.
+This architecture eliminates the need to configure CORS on the backend for the EC2 IP and simplifies client configuration since `VITE_API_URL` defaults to the relative path `/api` in production.
 
 ---
 
