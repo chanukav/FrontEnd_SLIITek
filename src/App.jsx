@@ -18,7 +18,6 @@ import ForgotPassword from "./pages/User/ForgotPassword";
 import StaffDashboard from "./pages/User/StaffDashboard";
 import NewUserDashboard from "./pages/User/NewUserDashboard";
 import CommunitiesPage from "./pages/User/CommunitiesPage";
-import { useAuth } from "./context/AuthContext";
 import QuestionsPage from "./pages/Questions";
 import QuestionDetailsPage from "./pages/QuestionDetails";
 import EditQuestionPage from "./pages/EditQuestion";
@@ -26,7 +25,6 @@ import LandingPage from "./pages/Landing/LandingPage";
 import HomePage from "./pages/Home/HomePage";
 
 const DashboardRedirect = () => {
-  const { auth } = useAuth();
   // Everyone goes to /home after login
   return <Navigate to="/home" replace />;
 };

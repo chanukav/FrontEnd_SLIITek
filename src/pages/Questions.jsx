@@ -264,7 +264,7 @@ function QuestionsPage() {
     if (trimmedTitle.length > 200) {
       return "Title must not exceed 200 characters";
     }
-    if (!/^[a-zA-Z0-9\s\?.,!()&\-':;]/.test(trimmedTitle)) {
+    if (!/^[a-zA-Z0-9\s?.,!()&\-':;]/.test(trimmedTitle)) {
       return "Title contains invalid characters";
     }
 
@@ -306,7 +306,7 @@ function QuestionsPage() {
         if (tag.length < 2 || tag.length > 25) {
           return `Each tag must be between 2 and 25 characters (invalid: "${tag}")`;
         }
-        if (!/^[a-z0-9\-]+$/.test(tag)) {
+        if (!/^[a-z0-9-]+$/.test(tag)) {
           return `Tag "${tag}" contains invalid characters. Use only lowercase letters, numbers, and hyphens`;
         }
       }

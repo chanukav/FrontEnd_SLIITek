@@ -30,7 +30,7 @@ export function Header({ setIsOpen }) {
   }
 
   const handleLogout = async () => {
-    try { await api.post("/auth/logout") } catch {}
+    try { await api.post("/auth/logout") } catch { /* ignore error */ }
     logout()
     navigate("/login")
   }

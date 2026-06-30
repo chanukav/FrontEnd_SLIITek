@@ -65,7 +65,7 @@ export default function EditQuestionPage() {
     if (nextTitle.length > 200) {
       return "Title must not exceed 200 characters";
     }
-    if (!/^[a-zA-Z0-9\s\?.,!()&\-':;]/.test(nextTitle)) {
+    if (!/^[a-zA-Z0-9\s?.,!()&\-':;]/.test(nextTitle)) {
       return "Title contains invalid characters";
     }
 

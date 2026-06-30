@@ -21,17 +21,7 @@ const displayName = (user) =>
   user?.name ||
   "Unknown";
 
-/** @param {{ viewUrl?: string; url?: string } | string} imgOrUrl */
-const questionImageSrc = (imgOrUrl) => {
-  const raw =
-    typeof imgOrUrl === "string"
-      ? imgOrUrl.trim()
-      : (imgOrUrl?.viewUrl || imgOrUrl?.url || "").trim();
-  if (!raw) return "";
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  if (raw.startsWith("/")) return `${API_ORIGIN}${raw}`;
-  return `${API_ORIGIN}/${raw}`;
-};
+
 
 const patchAnswerInTree = (items, answerId, patch) => {
   const idStr = String(answerId);
@@ -107,16 +97,7 @@ const findAnswerInTree = (items, answerId) => {
   return null;
 };
 
-const initialsFromDisplayName = (displayName) => {
-  if (!displayName) return "?";
-  return displayName
-    .split(" ")
-    .map((word) => word[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-};
+
 
 const shortAnswerTime = (createdAt) => {
   if (!createdAt) return "now";
@@ -168,7 +149,6 @@ function QuestionDetailsPage() {
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [uploadingAnswerImages, setUploadingAnswerImages] = useState(false);
   // Store reply textarea values without state updates, to prevent "stuck typing".
   const replyTextareasRef = useRef({});
   const newAnswerImageInputRef = useRef(null);
@@ -630,38 +610,6 @@ function QuestionDetailsPage() {
     }
   };
 
-  const uploadEditAnswerImageFiles = async (fileBatch) => {
-    if (!editAnswerId || !auth?.token) return;
-    try {
-      setEditError("");
-      setUploadingAnswerImages(true);
-      const res = await qaApi.uploadAnswerImages(editAnswerId, fileBatch);
-      if (res?.answer) {
-        setAnswers((prev) =>
-          patchAnswerInTree(prev, editAnswerId, { images: res.answer.images })
-        );
-      }
-    } catch (err) {
-      setEditError(err?.response?.data?.message || err.message || "Upload failed");
-    } finally {
-      setUploadingAnswerImages(false);
-    }
-  };
-
-  const onRemoveEditAnswerImage = async (url) => {
-    if (!editAnswerId || !auth?.token) return;
-    try {
-      setEditError("");
-      const res = await qaApi.removeAnswerImage(editAnswerId, url);
-      if (res?.answer) {
-        setAnswers((prev) =>
-          patchAnswerInTree(prev, editAnswerId, { images: res.answer.images })
-        );
-      }
-    } catch (err) {
-      setEditError(err?.response?.data?.message || err.message || "Remove failed");
-    }
-  };
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (!question) return <div className="p-6">Question not found</div>;
@@ -669,8 +617,7 @@ function QuestionDetailsPage() {
 
   const AnswerCard = ({ answer, depth }) => {
     const isBest = bestAnswerId && answer._id === bestAnswerId;
-    const authorLabel = displayName(answer.authorId);
-    const initials = initialsFromDisplayName(authorLabel);
+
     const when = shortAnswerTime(answer.createdAt);
     const editedWhen = shortAnswerTime(answer.updatedAt);
     const isEdited =

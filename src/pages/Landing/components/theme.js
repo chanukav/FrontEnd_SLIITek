@@ -21,7 +21,6 @@ export const THEME = {
 export function useCountUp(target, duration = 2000) {
   const [count, setCount]     = useState(0);
   const [started, setStarted] = useState(false);
-  const ref = { current: null };
 
   // Use a stable ref object via useRef pattern — recreate with useEffect
   const [node, setNode] = useState(null);

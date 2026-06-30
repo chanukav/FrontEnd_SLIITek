@@ -1,15 +1,5 @@
-import { useState } from "react"
 import { useAuth } from "../../../context/AuthContext"
 import { useNavigate } from "react-router-dom"
-import { api } from "../../../lib/api"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/dialog"
 import {
   ChevronRight,
   LayoutDashboard,
@@ -64,23 +54,9 @@ function SettingsRow({ icon: Icon, label, description, onClick, variant = "defau
 }
 
 export function Settings() {
-  const { auth, logout } = useAuth()
+  const { auth } = useAuth()
   const navigate = useNavigate()
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const isAdmin = auth?.user?.role === "admin" || auth?.user?.role === "moderator"
-
-  const confirmDeleteAccount = async () => {
-    setDeleteDialogOpen(false)
-    try {
-      await api.delete("/auth/me")
-    } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || "Could not delete account"
-      window.alert(msg)
-      return
-    }
-    logout()
-    navigate("/")
-  }
 
   if (isAdmin) {
     return (
