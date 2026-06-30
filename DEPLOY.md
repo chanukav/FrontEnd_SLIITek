@@ -84,10 +84,9 @@ Ensure the following variables in the [Jenkinsfile](file:///d:/SLIITek/FrontEnd_
 environment {
     AWS_ACCOUNT_ID     = credentials('AWS_ACCOUNT_ID') // Retrieve from Jenkins Credentials Store
     AWS_DEFAULT_REGION = 'ap-south-1'                  // Target AWS ECR region
-    ECR_REGISTRY       = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
     ECR_REPOSITORY     = 'sliitek-frontend'            // Matches AWS ECR repo name
-    IMAGE_TAG          = 'latest'
-    EC2_HOST           = "${env.EC2_HOST_IP}"           // Retrieve from Jenkins Global Environment Variables
+    IMAGE_TAG          = "build-\${env.BUILD_NUMBER}"
+    EC2_HOST           = "\${env.EC2_HOST_IP}"           // Retrieve from Jenkins Global Environment Variables
     EC2_USER           = 'ubuntu'
 }
 ```
@@ -131,7 +130,7 @@ When a build is triggered, the pipeline:
    - SSH into the EC2 host, authenticate with AWS ECR, and execute:
      ```bash
      docker compose -f /home/ubuntu/docker-compose.yml pull frontend
-     docker compose -f /home/ubuntu/docker-compose.yml up -d frontend
+     docker compose -f /home/ubuntu/docker-compose.yml up -d --no-deps frontend
      docker image prune -f
      ```
 
