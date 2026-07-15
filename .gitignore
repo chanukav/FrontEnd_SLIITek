@@ -1,4 +1,5 @@
 # E2E test credentials – never commit
+.env
 .env.e2e
 
 # Logs
