@@ -33,7 +33,42 @@ pipeline {
             }
         }
 
+        stage('Check Changes') {
+            steps {
+                script {
+                    try {
+                        def diffOut = bat(returnStdout: true, script: '@git diff-tree --no-commit-id --name-only -r HEAD').trim()
+                        if (diffOut) {
+                            def changedFiles = diffOut.split('\\r?\\n').collect { it.trim() }.findAll { it != "" }
+                            echo "Changed files in this commit: ${changedFiles}"
+                            
+                            def nonDocFiles = changedFiles.findAll { file ->
+                                !(file.endsWith('.md') || file.endsWith('.txt') || file.startsWith('docs/'))
+                            }
+                            
+                            if (nonDocFiles.isEmpty()) {
+                                echo "Only documentation files were updated. Skipping subsequent stages."
+                                env.SKIP_BUILD = 'true'
+                            } else {
+                                echo "Detected changes in non-documentation files: ${nonDocFiles}"
+                                env.SKIP_BUILD = 'false'
+                            }
+                        } else {
+                            echo "No changed files detected or manual build. Proceeding with build."
+                            env.SKIP_BUILD = 'false'
+                        }
+                    } catch (Exception e) {
+                        echo "Error running git diff: ${e.message}. Defaulting to run build."
+                        env.SKIP_BUILD = 'false'
+                    }
+                }
+            }
+        }
+
         stage('Install Dependencies & Verify') {
+            when {
+                expression { env.SKIP_BUILD != 'true' }
+            }
             steps {
                 bat 'npm install'
                 bat 'npm run lint'
@@ -44,9 +79,12 @@ pipeline {
 
         stage('Build Docker Image') {
             when {
-                anyOf {
-                    branch 'main'
-                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                allOf {
+                    expression { env.SKIP_BUILD != 'true' }
+                    anyOf {
+                        branch 'main'
+                        expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                    }
                 }
             }
             steps {
@@ -56,9 +94,12 @@ pipeline {
 
         stage('Login to Amazon ECR') {
             when {
-                anyOf {
-                    branch 'main'
-                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                allOf {
+                    expression { env.SKIP_BUILD != 'true' }
+                    anyOf {
+                        branch 'main'
+                        expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                    }
                 }
             }
             steps {
@@ -73,9 +114,12 @@ pipeline {
 
         stage('Push Image to ECR') {
             when {
-                anyOf {
-                    branch 'main'
-                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                allOf {
+                    expression { env.SKIP_BUILD != 'true' }
+                    anyOf {
+                        branch 'main'
+                        expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                    }
                 }
             }
             steps {
@@ -88,9 +132,12 @@ pipeline {
 
         stage('Deploy to EC2 via SSH') {
             when {
-                anyOf {
-                    branch 'main'
-                    expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                allOf {
+                    expression { env.SKIP_BUILD != 'true' }
+                    anyOf {
+                        branch 'main'
+                        expression { env.BRANCH_NAME == 'main' || env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                    }
                 }
             }
             steps {
